@@ -1,0 +1,28 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - salmon>=1.8.0
+  - alevin-fry>=0.6.0
+  - pyroe>=0.6.2
+  - bedtools>=2.30.0
+  - gffread>=0.12.7
+  - r-essentials>=4.1
+  - r-devtools
+  - r-argparser
+  - r-biocmanager
+  - biopython
+  - bioconductor-genomicfeatures
+  - bioconductor-eisaR
+  - bioconductor-bsgenome
+  - bioconductor-fishpond
+  - bioconductor-polyester
+  - ipykernel
+  - rpy2
+  - joblib
+  - biopython
+  - mygene
+  - pip
+  - pip:
+    - git+https://github.com/mikecuoco/myutils.git
