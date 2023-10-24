@@ -1,4 +1,12 @@
-import requests, shutil, logging
+#!/usr/bin/env python
+# Created on: Oct 24, 2023 at 1:32:22 PM
+__author__ = "Michael Cuoco"
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+import requests, shutil
 from pathlib import Path
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -6,8 +14,6 @@ from Bio.Seq import Seq
 from pyroe import make_spliceu_txome
 from tempfile import NamedTemporaryFile
 import pyranges as pr
-
-logging.basicConfig(level=logging.INFO)
 
 REPBASE = "/iblm/logglun02/mcuoco/projects/salmonTE_testing/resources/hg38/humrep.ref"
 
@@ -23,9 +29,7 @@ def get_te_consensus(name: str, source: str, repbase: str | None = None) -> SeqR
     if source == "dfam":
         # https://dfam.org/releases/Dfam_3.7/apidocs
         DFAM_URL = "https://dfam.org/api/families"
-        logging.info(
-            f"Retrieving {name} consensus sequence from DFAM API at {DFAM_URL}"
-        )
+        logger.info(f"Retrieving {name} consensus sequence from DFAM API at {DFAM_URL}")
 
         params = {
             # The summary format is metadata-only and does not include
@@ -45,7 +49,7 @@ def get_te_consensus(name: str, source: str, repbase: str | None = None) -> SeqR
     elif source == "repbase":
         if not Path(repbase).exists():
             raise ValueError(f"no such file {repbase}")
-        logging.info(f"Retrieving {name} consensus sequence from REPBASE at {repbase}")
+        logger.info(f"Retrieving {name} consensus sequence from REPBASE at {repbase}")
 
         for s in SeqIO.parse(repbase, "fasta"):
             if s.id == name:
@@ -75,7 +79,7 @@ def make_txome(
             raise ValueError(f"No such file {f}")
 
     bt_path = shutil.which("bedtools")
-    logging.info(f"Using bedtools from {bt_path}")
+    logger.info(f"Using bedtools from {bt_path}")
 
     with NamedTemporaryFile(suffix=".fa") as tmp_fa, NamedTemporaryFile(
         suffix=".gtf"
@@ -84,14 +88,14 @@ def make_txome(
         # make fasta for chromosome
         records = [s for s in SeqIO.parse(genome_fa, "fasta") if s.id == chromosome]
         SeqIO.write(records, tmp_fa.name, "fasta")
-        logging.info(f"Chromosome {chromosome} fasta written to {tmp_fa.name}")
+        logger.info(f"Chromosome {chromosome} fasta written to {tmp_fa.name}")
 
         # make gtf for chromosome
         gtf = pr.read_gtf(txome_gtf, as_df=True)
         pr.PyRanges(gtf[gtf["Chromosome"] == chromosome]).to_gtf(tmp_gtf.name)
-        logging.info(f"Chromosome {chromosome} gtf written to {tmp_gtf.name}")
+        logger.info(f"Chromosome {chromosome} gtf written to {tmp_gtf.name}")
 
-        logging.info(f"Saving spliceu txome to {outdir}")
+        logger.info(f"Saving spliceu txome to {outdir}")
 
         # extract isoforms and unspliced transcripts from genome
         # add TE sequences
