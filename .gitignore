@@ -1,4 +1,5 @@
 __pycache__/
-.conda/
+.conda*/
 .ipynb_checkpoints/
 resources/
+*.egg-info/

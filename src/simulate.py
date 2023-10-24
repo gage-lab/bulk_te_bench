@@ -1,6 +1,5 @@
 from pathlib import Path
 import pandas as pd
-from tempfile import NamedTemporaryFile
 from Bio import SeqIO
 from joblib import Parallel, delayed
 from math import ceil

@@ -24,5 +24,10 @@ dependencies:
   - biopython
   - mygene
   - pip
+  - black
+  - pre-commit
+  - git>=2
+  - git-lfs>=2.2.1
   - pip:
     - git+https://github.com/mikecuoco/myutils.git
+    - -e .
