@@ -10,11 +10,12 @@
 ├── setup.py # install local python package
 ├── analysis # analysis-specific files
 │   ├── 20231004_benchmark.ipynb
+│   ├── make_l1hs_chr22_txome.py
 │   └── mikes_old_notebook.ipynb
 └── src # local python package
     ├── __init__.py
-    ├── make_txome.py
-    └── simulate.py
+    ├── txome.py
+    └── bench.py
 ```
 
 ## Environment setup
