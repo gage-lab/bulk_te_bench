@@ -9,7 +9,7 @@
 ├── download_resources.py # script to create resources directory with reference files
 ├── setup.py # install local python package
 ├── analysis # analysis-specific files
-│   ├── 20231004_benchmark.ipynb
+│   ├── l1hs_chr22.ipynb
 │   ├── make_l1hs_chr22_txome.py
 │   └── mikes_old_notebook.ipynb
 └── src # local python package
