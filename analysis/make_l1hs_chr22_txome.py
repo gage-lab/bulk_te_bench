@@ -27,8 +27,6 @@ txome.get_rmsk_seqs(
 )
 txome.txome_fa = Path("../resources/chr22_l1hs_txome/txome.fa")
 txome.make_txome()
-txome.salmon_index()
-
 
 # SIMULATION 1: uniform FPKM, hold all transcripts constant across samples, only increase L1HS expression
 # make count matrix to simulate from

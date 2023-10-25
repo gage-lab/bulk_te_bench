@@ -26,7 +26,7 @@ from rpy2.robjects.packages import importr
 
 REPBASE = "/iblm/logglun02/mcuoco/projects/salmonTE_testing/resources/hg38/humrep.ref"
 
-
+# TODO: move this as method of Txome?
 def get_te_consensus(name: str, source: str, repbase: str | None = None) -> SeqRecord:
     """
     Get TE consensus sequence from Dfam or Repbase
@@ -128,7 +128,9 @@ class Txome:
             pr.PyRanges(rmsk).to_bed(bed.name)
             # use bedtools to extract sequences from fasta, save to new fasta
             cmd = f"bedtools getfasta -s -fi {self.genome_fa} -bed {bed.name} -fo {self.outdir}/extra.fa"
-            Popen(cmd, shell=True).wait()
+            exit_code = Popen(cmd, shell=True).wait()
+            if exit_code != 0:
+                raise ValueError(f"bedtools getfasta failed with exit code {exit_code}")
 
         self.logger.info(f"Saved {len(rmsk)} sequences to {self.outdir}/extra.fa")
         if self.extra_fa:
@@ -168,7 +170,7 @@ class Txome:
             # add TE sequences
             # save to FASTA
             self.logger.info(f"Saving spliceu txome to {self.outdir}")
-            out = make_spliceu_txome(
+            make_spliceu_txome(
                 tmp_fa.name,
                 tmp_gtf.name,
                 str(self.outdir),
@@ -182,43 +184,6 @@ class Txome:
                 logging.root.removeHandler(handler)
 
             self.txome_fa = self.outdir / "txome.fa"
-
-    def salmon_index(self, k: int = 31, extra: str = "") -> None:
-        """
-        Index the transcriptome with salmon
-        """
-        # check if make_txome as been run
-        if not hasattr(self, "txome_fa"):
-            raise ValueError("make_txome must be run before salmon_index")
-
-        cmd = f"salmon index -t {self.txome_fa} -i {self.outdir}/salmon_index -k {k} {extra} > {self.outdir}/salmon_index.log 2>&1"
-        self.logger.info(f"Indexing transcriptome with salmon: {cmd}")
-        Popen(cmd, shell=True).wait()
-
-        # remove duplicate transcripts from transcriptome
-        if (self.outdir / "salmon_index/duplicate_clusters.tsv").exists():
-            self.logger.info("Removing duplicate transcripts from transcriptome")
-
-            # get duplicated transcript IDs
-            dup_tx = pd.read_csv(
-                self.outdir / "salmon_index/duplicate_clusters.tsv", sep="\t"
-            ).DuplicateRef
-
-            # remove them from the transcriptome
-            txome_dedup_fa = self.outdir / "txome_dedup.fa"
-            with self.txome_fa.open() as f, txome_dedup_fa.open("w") as g:
-                for record in SeqIO.parse(f, "fasta"):
-                    if record.id not in dup_tx.values:
-                        SeqIO.write(record, g, "fasta")
-
-            # update gene map, save
-            t2g = pd.read_csv(self.outdir / "txome_t2g_3col.tsv", sep="\t", header=None)
-            t2g = t2g[~t2g[0].isin(dup_tx.values)].to_csv(
-                self.outdir / "txome_t2g_3col.tsv", sep="\t", header=None, index=False
-            )
-
-            # corrrected transcriptome
-            self.txome_fa = txome_dedup_fa
 
     @staticmethod
     def _polyester_producer(
