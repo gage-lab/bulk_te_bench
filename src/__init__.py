@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
 
 # Define the format
-log_format = "[%(name)s: %(asctime)s] {%(thread)d} %(levelname)s - %(message)s"
+log_format = "[%(levelname)s:%(name)s: %(asctime)s] - %(message)s"
 
 # Configure the formatter with the provided format
 formatter = logging.Formatter(log_format, datefmt="%m-%d %H:%M:%S")
