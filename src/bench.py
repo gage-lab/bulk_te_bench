@@ -43,6 +43,9 @@ class Benchmark:
         """Get read counts"""
         pass
 
+    # TODO: add method plot_difference() to generate boxplot
+    # TODO: add method plot_l1hs() to generate L1HS lineplots
+
 
 class BenchmarkSalmon(Benchmark):
     """
