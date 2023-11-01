@@ -103,10 +103,18 @@ for tx in SeqIO.parse(txome.txome_fa, "fasta"):
             random_coeff = random.randint(0, 20)
             counts[sample].append(random_coeff * len(tx.seq) // 100)
         elif "chr" in tx.id:  # rmsk
-            counts[sample].append(10 * len(tx.seq) // 100)
+            counts[sample].append(20 * len(tx.seq) // 100)
         else:
             counts[sample].append(0)
 
 counts = pd.DataFrame(counts).set_index("tx_id")
 
 txome.simulate_reads(counts, "sim_reads_4", n_jobs=32)
+
+#   SIMULATION 5: realistic counts
+#   Simulate reads with realistic counts
+#   1. read in GTEX count matrix and metadata
+#   2. Intersect transcript IDs from GTEx quantification to our Txome (or switch to their version of GENCODE and remake Txome)
+#   3. Select transcripts on chr22 only
+#   4. Take 1 sample from each tissue (ensure it's the same samples each time this script is run)
+#   5. Add L1HS transcripts to the count matrix with a constant read count (maybe median counts for that sample?)
