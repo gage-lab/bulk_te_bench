@@ -113,8 +113,17 @@ txome.simulate_reads(counts, "sim_reads_4", n_jobs=32)
 
 #   SIMULATION 5: realistic counts
 #   Simulate reads with realistic counts
-#   1. read in GTEX count matrix and metadata
-#   2. Intersect transcript IDs from GTEx quantification to our Txome (or switch to their version of GENCODE and remake Txome)
-#   3. Select transcripts on chr22 only
+#   1. read in GTEX gene count matrix and metadata
+#   2. Select transcripts on chr22 only
+#   3. Intersect gene IDs from GTEx quantification to our Txome's t2g.tsv file (or switch to their version of GENCODE and remake Txome)
 #   4. Take 1 sample from each tissue (ensure it's the same samples each time this script is run)
 #   5. Add L1HS transcripts to the count matrix with a constant read count (maybe median counts for that sample?)
+#
+#   for sample in samples:
+#       for gene in genes:
+#        if ntx == 1:
+#           DO SOMETHING
+#        elif ntx == 2:
+#           DO SOMETHING
+#        elif ntx > 2:
+#           DO SOMETHING
