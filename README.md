@@ -28,6 +28,11 @@ mamba env create -f conda.yaml -p ./.conda
 python download_resources.py
 ```
 
+Manually download to `./resources/GTEX`:
+
+1. Counts - https://storage.cloud.google.com/adult-gtex/bulk-gex/v8/rna-seq/GTEx_Analysis_2017-06-05_v8_RSEMv1.3.0_transcript_expected_count.gct.gz
+2. Sample Metadata - https://storage.cloud.google.com/adult-gtex/annotations/v8/GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt
+
 ## Before committing
 
 ```bash
