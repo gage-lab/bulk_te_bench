@@ -220,10 +220,6 @@ class Txome:
         :param n_jobs: number of parallel threads to use
         """
 
-        # make sure salmon index has been run
-        if not (self.outdir / "salmon_index").exists():
-            raise ValueError("salmon_index must be run before simulate_reads")
-
         outdir = self.outdir / name
         Path(outdir).mkdir(exist_ok=True)
         counts.to_csv(f"{outdir}/counts.tsv", sep="\t")
