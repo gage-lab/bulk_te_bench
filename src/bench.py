@@ -10,8 +10,10 @@ from abc import abstractmethod
 from pathlib import Path
 from subprocess import Popen
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 
 class Benchmark:
@@ -23,6 +25,7 @@ class Benchmark:
         self.reads_dir = Path(reads_dir)
         self.txome_dir = Path(txome_dir)
         self.outdir = Path(outdir)
+        self.benchmark = None
 
         # ensure these dirs exist
         for dir in [self.reads_dir, self.txome_dir]:
@@ -50,8 +53,91 @@ class Benchmark:
         """Get read counts"""
         pass
 
-    # TODO: add method plot_difference() to generate boxplot
-    # TODO: add method plot_l1hs() to generate L1HS lineplots
+    def plot_difference(self) -> None:
+        """
+        Plot difference of estimated vs true counts in boxplots
+        """
+
+        if self.benchmark is None:
+            raise ValueError("Must run read_counts() first!")
+
+        ax = plt.gca()
+        sns.boxplot(
+            data=self.benchmark[~self.benchmark.tx_id.str.contains("chr")],
+            x="sample",
+            y="log2_abs_difference",
+            ax=ax,
+        )
+        sns.stripplot(
+            data=self.benchmark[self.benchmark.tx_id.str.contains("chr")],
+            x="sample",
+            y="log2_abs_difference",
+            ax=ax,
+            color="red",
+        )
+        ax.text(
+            x=0.5,
+            y=1.1,
+            s="Difference of Estimated Counts from True Counts",
+            fontsize=12,
+            weight="bold",
+            ha="center",
+            va="bottom",
+            transform=ax.transAxes,
+        )
+        ax.text(
+            x=0.5,
+            y=1.05,
+            s="Red points = L1 transcripts",
+            fontsize=8,
+            alpha=0.75,
+            ha="center",
+            va="bottom",
+            transform=ax.transAxes,
+        )
+
+    def plot_l1hs(self) -> None:
+        """
+        Plot estimated vs true counts for L1 transcripts
+        """
+
+        if self.benchmark is None:
+            raise ValueError("Must run read_counts() first!")
+
+        plot_df = self.benchmark[self.benchmark.tx_id.str.contains("chr")]
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+
+        sns.lineplot(
+            data=plot_df,
+            x="count_true",
+            y="count_estimated",
+            hue="tx_id",
+            palette="colorblind",
+            ax=ax1,
+        )
+
+        sns.lineplot(
+            data=plot_df,
+            x="count_true",
+            y="difference",
+            hue="tx_id",
+            palette="colorblind",
+            ax=ax2,
+        )
+
+        # remove legends
+        ax1.legend_.remove()
+
+        # move ax2 legend outside
+        handles, labels = ax2.get_legend_handles_labels()
+        ax2.legend(
+            handles=handles,
+            labels=labels,
+            loc="center left",
+            bbox_to_anchor=(1, 0.5),
+            frameon=False,
+        )
 
 
 class BenchmarkSalmon(Benchmark):
@@ -132,6 +218,7 @@ class BenchmarkSalmon(Benchmark):
         benchmark["log2_abs_difference"] = np.log2(np.abs(benchmark["difference"]))
         benchmark.reset_index(inplace=True)
 
+        self.benchmark = benchmark
         return benchmark
 
 
@@ -139,7 +226,7 @@ class BenchmarkSalmon(Benchmark):
 # use Benchmark as base class
 # must have methods index(), quant(), and read_counts()
 
-
+'''
 class BenchmarkTEtranscripts(Benchmark):
     """
     Wrapper for TEtranscripts benchmarking
@@ -248,3 +335,4 @@ class BenchmarkTEtranscripts(Benchmark):
         benchmark.reset_index(inplace=True)
 
         return benchmark
+'''
