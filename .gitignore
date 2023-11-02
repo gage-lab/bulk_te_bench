@@ -1,6 +1,10 @@
 __pycache__/
 .conda*/
+.snakemake/
 .ipynb_checkpoints/
 resources/
 results/
+ftp*
+hgdownload*
+labshare*
 *.egg-info/
