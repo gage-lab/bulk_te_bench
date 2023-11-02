@@ -127,3 +127,42 @@ txome.simulate_reads(counts, "sim_reads_4", n_jobs=32)
 #           DO SOMETHING
 #        elif ntx > 2:
 #           DO SOMETHING
+
+
+# create a dictionary mapping gene name to # of transcripts
+gene_to_tx_df = pd.read_csv(
+    "../resources/chr22_l1hs_txome/txome_t2g.tsv", sep="\t", header=None
+)
+# count duplicates in the gene column
+gene_to_tx_values = gene_to_tx_df[1].value_counts()
+# TODO: make this group by so we have dataframe with gene name as index and each transcript in list as a column -> dictionary
+gene_to_tx = gene_to_tx_values.groupby()
+
+file_path = "../resources/GTEX/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct"
+df = pd.read_csv(file_path, sep="\t", skiprows=2)
+# get overlap of genes in GTEx and our Txome
+genes_of_interest = set(df["name"]) & set(gene_to_tx_df[1])
+df = df[df["name"].isin(genes_of_interest)]
+
+# get random samples from each tissue
+df = df.iloc[:, 0:6]  # TODO: FIX THIS TO BE ACTUAL RANDOM SAMPLES
+counts = defaultdict(list)
+for gene in df["name"]:
+    counts["tx_id"].extend(gene_to_tx[gene])
+    for sample in df:
+        if gene_to_tx_df[gene] == 1:
+            counts[sample].append(df.loc[gene, sample])
+        elif gene_to_tx_df[gene] == 2:
+            # do whatever
+            # counts[sample].append(df.loc[gene,sample])
+            pass
+        elif gene_to_tx_df[gene] > 2:
+            # do whatever
+            # counts[sample].append(df.loc[gene,sample])
+            pass
+        else:
+            print("ERROR: gene has no transcripts")
+
+counts = pd.DataFrame(counts).set_index("tx_id")
+
+txome.simulate_reads(counts, "sim_reads_4", n_jobs=32)
