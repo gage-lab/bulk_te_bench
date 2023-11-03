@@ -1,0 +1,18 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - r-essentials>=4.1
+  - r-devtools
+  - r-argparser
+  - r-biocmanager
+  - biopython
+  - bioconductor-genomicfeatures
+  - bioconductor-eisaR
+  - bioconductor-bsgenome
+  - bioconductor-fishpond
+  - bioconductor-polyester
+  - rpy2
+  - joblib
+  - biopython

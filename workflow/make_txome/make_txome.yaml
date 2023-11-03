@@ -1,0 +1,11 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - bedtools>=2.30.0
+  - pyroe>=0.6.2
+  - samtools
+  - git-lfs>=2.2.1
+  - pip:
+    - git+https://github.com/mikecuoco/myutils.git

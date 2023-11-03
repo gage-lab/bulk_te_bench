@@ -1,0 +1,58 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+
+description: snakemake configuration file
+
+type: object
+
+properties:
+  genome_fa:
+    type: string
+
+  rmsk_out:
+    type: string
+
+  gencode_gtf:
+    type: string
+
+  rmsk_gtf:
+    type: string
+
+  txomes:
+    type: object
+    patternProperties:
+      "^.*txome$":
+        type: object
+        properties:
+          rmsk_query:
+            type: string
+          chrs:
+            type: array
+            items:
+              type: string
+          simulations:
+            type: object
+            patternPproperties:
+              "^.*$":
+                type: object
+                properties:
+                  readlen:
+                    type: integer
+                  strand_specific:
+                    type: boolean
+                  counts:
+                    type: string
+                required:
+                  - strand_specific
+                  - readlen
+                  - counts
+        required:
+          - rmsk_query
+          - chrs
+          - simulations
+
+required:
+  - genome_fa
+  - rmsk_out
+  - gencode_gtf
+  - rmsk_gtf
+  - txomes

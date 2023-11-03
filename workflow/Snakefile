@@ -1,0 +1,53 @@
+from snakemake.utils import min_version, validate
+
+import pandas as pd
+from collections import defaultdict
+import os
+
+##### setup remote providers #####
+from snakemake.remote import FTP, HTTP
+
+FTP = FTP.RemoteProvider()
+HTTP = HTTP.RemoteProvider()
+
+
+def remote_or_local(path: str):
+    "Specify remote provider if path is a URL, otherwise return path"
+    if path.startswith("ftp"):
+        return FTP.remote(path, immediate_close=True)
+    elif path.startswith("http"):
+        return HTTP.remote(path)
+    elif os.path.exists(path):
+        return path
+    else:
+        raise ValueError(f"Could not find {path}")
+
+
+##### set minimum snakemake version #####
+min_version("7.32.0")
+
+
+##### read and validate config file #####
+configfile: "config.yaml"
+
+
+validate(config, "config.schema.yaml")
+
+##### setup output samples #####
+output = []
+for txome in config["txomes"]:
+    for sim, data in config["txomes"][txome]["simulations"].items():
+        counts = pd.read_csv(data["counts"], sep="\t", index_col=0)
+        for x in range(0, counts.shape[1]):
+            output.append(
+                f"results/{txome}/{sim}/star_align/sample_{x+1}/Aligned.out.sorted.bam.bai"
+            )
+
+
+include: "make_txome/make_txome.smk"
+include: "simulate_reads/simulate_reads.smk"
+
+# include: "star/star.smk"
+# rule all:
+# 	input:
+# 		output

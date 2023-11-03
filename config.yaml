@@ -1,0 +1,19 @@
+# configuration for snakemake workflow
+
+# reference files to use
+genome_fa: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
+rmsk_out: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.out.gz"
+gencode_gtf: "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_42/gencode.v42.basic.annotation.gtf.gz"
+rmsk_gtf: "https://labshare.cshl.edu/shares/mhammelllab/www-data/TEtranscripts/TE_GTF/GRCh38_GENCODE_rmsk_TE.gtf.gz"
+
+# list of transcriptomes generate and simulate reads from
+txomes:
+  chr22_l1hs_txome:
+    rmsk_query: "repName == 'L1HS' & length > 6000"
+    chrs:
+      - "chr22"
+    simulations:
+      sim1:
+        strand_specific: True
+        readlen: 100
+        counts: "resources/chr22_l1hs_txome_old/sim_reads_1/counts.tsv" # count matrix tsv here
