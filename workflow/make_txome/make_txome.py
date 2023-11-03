@@ -18,6 +18,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import numpy as np
+import pandas as pd
 import pyranges as pr
 from myutils.rmsk import read_rmsk
 from pyroe import make_spliceu_txome
@@ -138,13 +139,18 @@ gtf = (
     .query("Chromosome in @chrs")
     .loc[filter_gtf]
 )
-pr.PyRanges(gtf).to_gtf(snakemake.output.gencode_gtf)
+pr.PyRanges(gtf).to_gtf(snakemake.output.genes_gtf)
+
+# make rmsk 1 based
+rmsk.Start = rmsk.Start - 1
+joint = pd.concat([gtf, rmsk])
+pr.PyRanges(joint).to_gtf(snakemake.output.joint_gtf)
 
 # make splicu transcriptome
 logger.info(f"Making spliceu transcriptome for chromosome(s) {' '.join(chrs)}")
 make_spliceu_txome(
     genome_path=tmp_fa.name,
-    gtf_path=snakemake.output.gencode_gtf,
+    gtf_path=snakemake.output.genes_gtf,
     output_dir=str(Path(snakemake.output.fa).parent),
     filename_prefix="txome",
     bt_path=shutil.which("bedtools"),

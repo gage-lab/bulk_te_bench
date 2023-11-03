@@ -1,0 +1,15 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python>=3.7.7
+  - pip
+  - pysam>=0.9
+  - pyranges
+  - r-base>=2.15
+  - gtfparse
+  - pandas<2.0.0
+  - bioconductor-deseq2>=1.10
+  - pip:
+    - tetranscripts==2.2.3

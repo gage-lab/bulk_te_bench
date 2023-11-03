@@ -39,15 +39,19 @@ for txome in config["txomes"]:
     for sim, data in config["txomes"][txome]["simulations"].items():
         counts = pd.read_csv(data["counts"], sep="\t", index_col=0)
         for x in range(0, counts.shape[1]):
-            output.append(
-                f"results/{txome}/{sim}/star_align/sample_{x+1}/Aligned.out.sorted.bam.bai"
+            num = "0" + str(x + 1) if x < 10 else x + 1
+            file = "results/{}/{}/tetranscripts/sample_{}/TEtranscripts_out.cntTable".format(
+                txome, sim, num
             )
+            output.append(file)
 
 
 include: "make_txome/make_txome.smk"
 include: "simulate_reads/simulate_reads.smk"
+include: "star/star.smk"
+include: "tetranscripts/tetranscripts.smk"
 
-# include: "star/star.smk"
-# rule all:
-# 	input:
-# 		output
+
+rule all:
+    input:
+        output,

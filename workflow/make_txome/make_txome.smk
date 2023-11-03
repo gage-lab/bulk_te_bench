@@ -5,7 +5,8 @@ rule make_txome:
         rmsk_out=remote_or_local(config["rmsk_out"]),
     output:
         fa="results/{txome}/txome.fa",
-        gencode_gtf="results/{txome}/txome_genes.gtf",
+        genes_gtf="results/{txome}/txome_genes.gtf",
+        joint_gtf="results/{txome}/txome_joint.gtf",
         rmsk="results/{txome}/txome_rmsk.bed",
     conda:
         "make_txome.yaml"
