@@ -1,0 +1,19 @@
+# configuration for snakemake workflow
+
+# reference files to use
+genome_fa: ngs-test-data/rnaseq/ref/genome.chr22.fa
+rmsk_out: ngs-test-data/scrnaseq_10x_v3/ref/rmsk_chr22.out
+gencode_gtf: ngs-test-data/rnaseq/ref/txome.chr22.gtf
+rmsk_gtf: ngs-test-data/rnaseq/ref/rmsk.chr22.gtf
+
+# list of transcriptomes generate and simulate reads from
+txomes:
+  test_txome:
+    rmsk_query: "repName == 'L1HS' & length > 6000"
+    chrs:
+      - "chr22"
+    simulations:
+      test_sim:
+        strand_specific: True
+        readlen: 100
+        counts: counts.tsv # count matrix tsv here

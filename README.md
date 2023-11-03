@@ -2,30 +2,28 @@
 
 ## Repository structure
 
-```
+```bash
 .
 ├── README.md
 ├── conda.yaml # conda environment specification
-├── download_resources.py # script to create resources directory with reference files
-├── setup.py # install local python package
-├── analysis # analysis-specific files
-│   ├── l1hs_chr22.ipynb
-│   ├── make_l1hs_chr22_txome.py
-│   └── mikes_old_notebook.ipynb
-└── src # local python package
-    ├── __init__.py
-    ├── txome.py
-    └── bench.py
+├── analysis/ # analysis of pipeline outputs
+├── workflow/ # snakemake pipeline for benchmarking
+├── config.yaml # snakemake pipeline configuration
+├── src/ # local python package
+└── setup.py # install local python package
 ```
 
-## Environment setup
+## Testing the pipeline
+
 
 ```bash
-# includes pip install -e . to install local python package from ./src/
-mamba env create -f conda.yaml -p ./.conda
+# Generate test data:
+cd .test/ngs-test-data
+snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa rnaseq/ref/rmsk.chr22.gtf scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
 
-# download reference genome, transcript annotation, and parsed repeatmasker annotation
-python download_resources.py
+cd ../..
+# test pipeline through make_txome and simulate_reads
+snakemake results/test_txome/test_sim/reads -c1 --use-conda --directory .test --show-failed-logs --rerun-incomplete
 ```
 
 ## Before committing
