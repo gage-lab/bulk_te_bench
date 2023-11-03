@@ -6,8 +6,10 @@ import random
 from collections import defaultdict
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from Bio import SeqIO
+from scipy.stats import dirichlet
 
 from src.txome import Txome
 
@@ -16,8 +18,14 @@ os.chdir(Path(__file__).parent)
 
 OUTDIR = Path("../resources/chr22_l1hs_txome_v26")
 GENOME_FA = Path("../resources/hg38.fa")
-TX_GTF = Path("../resources/gencode.v26.basic.annotation.gtf.gz")
+TX_GTF = Path("../resources/references-v8-gencode.v26.GRCh38.genes.gtf")
 RMSK_TSV = Path("../resources/hg38.rmsk.tsv")
+GTEx_COUNTS_PATH = Path(
+    "../resources/GTEX/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct"
+)
+GTEx_METADATA_PATH = Path(
+    "../resources/GTEX/annotations_v8_GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt"
+)
 
 
 txome = Txome(outdir=OUTDIR, genome_fa=GENOME_FA, tx_gtf=TX_GTF, chromosome="chr22")
@@ -47,44 +55,84 @@ txome.make_txome()
 #           DO SOMETHING
 
 
-"""# Check out samples
-metadata = pd.read_csv("../resources/GTEX/annotations_v8_GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt", index_col=0, sep="\t")
-samples = list(metadata.sample(frac=1, random_state=1).drop_duplicates(subset='SMTSD').index)
-
 # create a dictionary mapping gene name to # of transcripts
 gene_to_tx_df = pd.read_csv(
-    "../resources/chr22_l1hs_txome/txome_t2g.tsv", sep="\t", header=None
+    "../resources/chr22_l1hs_txome_v26/txome_t2g.tsv", sep="\t", header=None
 )
-# count duplicates in the gene column
-gene_to_tx_values = gene_to_tx_df[1].value_counts()
-# TODO: make this group by so we have dataframe with gene name as index and each transcript in list as a column -> dictionary
-gene_to_tx = gene_to_tx_values.groupby()
+# Mapping of genes to list of transcripts
+gene_to_tx = gene_to_tx_df.groupby(1).apply(lambda x: x[0].tolist()).to_dict()
 
-file_path = "../resources/GTEX/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct"
-df = pd.read_csv(file_path, sep="\t", skiprows=2)
-# get overlap of genes in GTEx and our Txome
-genes_of_interest = set(df["name"]) & set(gene_to_tx_df[1])
-df = df[df["name"].isin(genes_of_interest)]
+full_GTEx = pd.read_csv(GTEx_COUNTS_PATH, sep="\t", skiprows=2)
 
-# get random samples from each tissue
-df = df.iloc[:, 0:6]  # TODO: FIX THIS TO BE ACTUAL RANDOM SAMPLES
+# Randomly sample from each tissue
+metadata = pd.read_csv(
+    GTEx_METADATA_PATH,
+    index_col=0,
+    sep="\t",
+)
+metadata = metadata.loc[(list(full_GTEx.columns)[2:]), "SMTS"]
+samples = list(metadata.sample(frac=1, random_state=1).drop_duplicates().index)
+
+# Get overlaps of genes in GTEx and our Txome
+genes_of_interest = set(full_GTEx["Name"]) & set(gene_to_tx_df[1])
+full_GTEx.set_index("Name", inplace=True)
+chr22_GTEx = full_GTEx.loc[full_GTEx.index.isin(genes_of_interest), samples]
+
+
+# Voodoo: get realistic tx counts from GTEx genes
+# TODO check if cointoss is ok and add a seed
 counts = defaultdict(list)
-for gene in df["name"]:
+for gene in chr22_GTEx.index:
     counts["tx_id"].extend(gene_to_tx[gene])
-    for sample in df:
-        if gene_to_tx_df[gene] == 1:
-            counts[saonmple].append(df.loc[gene, sample])
-        elif gene_to_tx_df[gene] == 2:
-            # do whatever
-            # counts[sample].append(df.loc[gene,sample])
-            pass
-        elif gene_to_tx_df[gene] > 2:
-            # do whatever
-            # counts[sample].append(df.loc[gene,sample])
-            pass
+    for sample in chr22_GTEx.columns:
+        if len(gene_to_tx[gene]) == 1:
+            counts[sample].append(chr22_GTEx.loc[gene, sample])
+        elif len(gene_to_tx[gene]) == 2:
+            transcripts = gene_to_tx[gene]
+            TPM = chr22_GTEx.loc[gene, sample]
+
+            cointoss = random.randint(0, 1)
+            if cointoss == 0:
+                # use dirichlet to split counts between two isoforms
+                distribution = (
+                    dirichlet.rvs([1, 1], size=1, random_state=1) * TPM
+                )  # multiply this by counts
+            else:
+                # give to one isoform
+                distribution = [TPM, 0]
+
+            np.random.shuffle(distribution, random_state=1)
+            counts[sample].extend(distribution)
+
+        elif len(gene_to_tx[gene]) > 2:
+            # TPMs were either (i) split among three randomly chosen isoforms according to a flat Dirichlet distribution
+            # (α = (1,1,1)) or (ii) attributed to a single isoform.
+            transcripts = gene_to_tx[gene]
+            TPM = chr22_GTEx.loc[gene, sample]
+
+            cointoss = random.randint(0, 1)
+            if cointoss == 0:
+                # use dirichlet to split counts between two isoforms
+                distribution = np.array(
+                    dirichlet.rvs([1, 1, 1], size=1, random_state=1) * TPM
+                )  # multiply this by counts
+            else:
+                # give to one isoform
+                distribution = np.array([TPM, 0, 0])
+
+            # if there is more than 3 transcripts, add zeros to the distribution
+            if len(distribution) != len(gene_to_tx[gene]):
+                np.pad(distribution, (len(gene_to_tx[gene]) - len(distribution)))
+
+            # randomize
+            np.random.shuffle(distribution, random_state=1)
+            counts[sample].extend(distribution)
         else:
             print("ERROR: gene has no transcripts")
 
+
+# save and simulate
+
 counts = pd.DataFrame(counts).set_index("tx_id")
 
-txome.simulate_reads(counts, "sim_reads_4", n_jobs=32)"""
+txome.simulate_reads(counts, "sim_reads_5", n_jobs=32)
