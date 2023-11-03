@@ -13,3 +13,4 @@ dependencies:
   - bioconductor-deseq2>=1.10
   - pip:
     - tetranscripts==2.2.3
+    - git+https://github.com/mhammell-laboratory/TElocal.git

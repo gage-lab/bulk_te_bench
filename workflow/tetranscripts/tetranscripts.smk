@@ -5,7 +5,7 @@ def get_strandedness(wc):
         return "no"
 
 
-rule tetranscripts_count:
+rule tetranscripts:
     input:
         bam=rules.samtools_sort.output,
         bai=rules.samtools_index.output,
@@ -13,13 +13,15 @@ rule tetranscripts_count:
         txome_rmsk=rules.make_txome.output.rmsk,
         rmsk_gtf=remote_or_local(config["rmsk_gtf"]),
     output:
-        "results/{txome}/{sim}/tetranscripts/{sample}/TEtranscripts_out.cntTable",
+        tecount="results/{txome}/{sim}/tetranscripts/{sample}/TEtranscripts_out.cntTable",
+        telocal="results/{txome}/{sim}/tetranscripts/{sample}/TElocal_out.cntTable",
     conda:
         "tetranscripts.yaml"
     shadow:
         "shallow"
     log:
-        "results/{txome}/{sim}/tetranscripts/{sample}/TEtranscripts.log",
+        tecount="results/{txome}/{sim}/tetranscripts/{sample}/TEtranscripts.log",
+        telocal="results/{txome}/{sim}/tetranscripts/{sample}/TElocal.log",
     params:
         strandedness=get_strandedness,
         mode="multi",  # can be multi or uniq
