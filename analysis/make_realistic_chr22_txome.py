@@ -16,9 +16,12 @@ from src.txome import Txome
 # change dir to this one
 os.chdir(Path(__file__).parent)
 
+random.seed(1)
+np.random.seed(1)
+
 OUTDIR = Path("../resources/chr22_l1hs_txome_v26")
 GENOME_FA = Path("../resources/hg38.fa")
-TX_GTF = Path("../resources/references-v8-gencode.v26.GRCh38.genes.gtf")
+TX_GTF = Path("../resources/gencode.v26.adjusted.basic.annotation.chr22.gtf.gz")
 RMSK_TSV = Path("../resources/hg38.rmsk.tsv")
 GTEx_COUNTS_PATH = Path(
     "../resources/GTEX/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct"
@@ -44,15 +47,6 @@ txome.make_txome()
 #   3. Intersect gene IDs from GTEx quantification to our Txome's t2g.tsv file (or switch to their version of GENCODE and remake Txome)
 #   4. Take 1 sample from each tissue (ensure it's the same samples each time this script is run)
 #   5. Add L1HS transcripts to the count matrix with a constant read count (maybe median counts for that sample?)
-#
-#   for sample in samples:
-#       for gene in genes:
-#        if ntx == 1:
-#           DO SOMETHING
-#        elif ntx == 2:
-#           DO SOMETHING
-#        elif ntx > 2:
-#           DO SOMETHING
 
 
 # create a dictionary mapping gene name to # of transcripts
@@ -80,7 +74,6 @@ chr22_GTEx = full_GTEx.loc[full_GTEx.index.isin(genes_of_interest), samples]
 
 
 # Voodoo: get realistic tx counts from GTEx genes
-# TODO check if cointoss is ok and add a seed
 counts = defaultdict(list)
 for gene in chr22_GTEx.index:
     counts["tx_id"].extend(gene_to_tx[gene])
@@ -95,13 +88,13 @@ for gene in chr22_GTEx.index:
             if cointoss == 0:
                 # use dirichlet to split counts between two isoforms
                 distribution = (
-                    dirichlet.rvs([1, 1], size=1, random_state=1) * TPM
+                    dirichlet.rvs([1, 1], size=1)[0] * TPM
                 )  # multiply this by counts
             else:
                 # give to one isoform
                 distribution = [TPM, 0]
 
-            np.random.shuffle(distribution, random_state=1)
+            np.random.shuffle(distribution)
             counts[sample].extend(distribution)
 
         elif len(gene_to_tx[gene]) > 2:
@@ -114,7 +107,7 @@ for gene in chr22_GTEx.index:
             if cointoss == 0:
                 # use dirichlet to split counts between two isoforms
                 distribution = np.array(
-                    dirichlet.rvs([1, 1, 1], size=1, random_state=1) * TPM
+                    dirichlet.rvs([1, 1, 1], size=1)[0] * TPM
                 )  # multiply this by counts
             else:
                 # give to one isoform
@@ -122,17 +115,18 @@ for gene in chr22_GTEx.index:
 
             # if there is more than 3 transcripts, add zeros to the distribution
             if len(distribution) != len(gene_to_tx[gene]):
-                np.pad(distribution, (len(gene_to_tx[gene]) - len(distribution)))
+                distribution = np.pad(
+                    distribution, (0, (len(gene_to_tx[gene]) - len(distribution)))
+                )
 
             # randomize
-            np.random.shuffle(distribution, random_state=1)
+            np.random.shuffle(distribution)
             counts[sample].extend(distribution)
         else:
             print("ERROR: gene has no transcripts")
 
 
 # save and simulate
-
 counts = pd.DataFrame(counts).set_index("tx_id")
 
 txome.simulate_reads(counts, "sim_reads_5", n_jobs=32)
