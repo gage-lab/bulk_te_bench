@@ -129,6 +129,16 @@ txome.simulate_reads(counts, "sim_reads_4", n_jobs=32)
 #           DO SOMETHING
 
 
+# Check out samples
+metadata = pd.read_csv(
+    "../resources/GTEX/annotations_v8_GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt",
+    index_col=0,
+    sep="\t",
+)
+samples = list(
+    metadata.sample(frac=1, random_state=1).drop_duplicates(subset="SMTSD").index
+)
+
 # create a dictionary mapping gene name to # of transcripts
 gene_to_tx_df = pd.read_csv(
     "../resources/chr22_l1hs_txome/txome_t2g.tsv", sep="\t", header=None
