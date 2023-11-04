@@ -6,8 +6,8 @@ rule make_txome:
     output:
         fa="results/{txome}/txome.fa",
         genes_gtf="results/{txome}/txome_genes.gtf",
+        rmsk_gtf="results/{txome}/txome_rmsk.gtf",
         joint_gtf="results/{txome}/txome_joint.gtf",
-        rmsk="results/{txome}/txome_rmsk.bed",
     conda:
         "make_txome.yaml"
     log:
