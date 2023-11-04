@@ -1,0 +1,48 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  Formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Formatting
+        uses: github/super-linter@v4
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_SNAKEMAKE_SNAKEFMT: true
+
+  Testing:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    needs:
+      - Formatting
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+          submodules: recursive
+      - name: Setup Mamba
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          python-version: 3.9
+          channels: conda-forge,bioconda,nodefaults
+          channel-priority: strict
+      - name: Install Snakemake
+        run: mamba install snakemake
+      - name: Generate test data
+        run: cd .test/ngs-test-data && snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa rnaseq/ref/rmsk.chr22.gtf scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
+      - name: Run pipeline
+        run: snakemake all --use-conda --show-failed-logs --c2 --conda-cleanup-pkgs cache --all-temp --directory .test
