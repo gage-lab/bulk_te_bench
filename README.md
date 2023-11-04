@@ -13,17 +13,23 @@
 └── setup.py # install local python package
 ```
 
-## Testing the pipeline
+## The pipeline
 
+Testing
 
 ```bash
 # Generate test data:
 cd .test/ngs-test-data
 snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa rnaseq/ref/rmsk.chr22.gtf scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
-
 cd ../..
-# test pipeline through make_txome and simulate_reads
-snakemake results/test_txome/test_sim/reads -c1 --use-conda --directory .test --show-failed-logs --rerun-incomplete
+
+snakemake all -c1 --use-conda --directory .test --show-failed-logs --rerun-incomplete
+```
+
+Running
+
+```bash
+snakemake all -c16 --use-conda --show-failed-logs --rerun-incomplete
 ```
 
 ## Before committing
