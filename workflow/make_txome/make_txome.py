@@ -19,6 +19,11 @@ import pyranges as pr
 from myutils.rmsk import read_rmsk
 from snakemake.shell import shell
 
+# check if snakemake.params.chrom is a list
+chrs = snakemake.params.chrs
+if not isinstance(chrs, list):
+    raise ValueError(chrs + " must be a list, fix config.yaml")
+
 # unzip gtf and genome if necessary
 for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:
     if ".gz" in f:
@@ -27,17 +32,16 @@ for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:
 snakemake.input.genome_fa = snakemake.input.genome_fa.replace(".gz", "")
 snakemake.input.gencode_gtf = snakemake.input.gencode_gtf.replace(".gz", "")
 
-
-# check if snakemake.params.chrom is a list
-chrs = snakemake.params.chrs
-if not isinstance(chrs, list):
-    raise ValueError(chrs + " must be a list, fix config.yaml")
+# subset genome
+my_chrs = " ".join(chrs)
+shell("samtools faidx {snakemake.input.genome_fa}")
+shell(
+    "samtools faidx {snakemake.input.genome_fa} {my_chrs} > {snakemake.output.genome_fa}"
+)
 
 ### parse and filter rmsk ###
 rmsk_query = snakemake.params.rmsk_query
-logger.info(
-    f"Parsing rmsk, filtering for {rmsk_query} from chromosome(s) {' '.join(chrs)}"
-)
+logger.info(f"Parsing rmsk, filtering for {rmsk_query} from chromosome(s) {my_chrs}")
 rmsk = (
     read_rmsk(snakemake.input.rmsk_out)
     .query("genoName in @chrs")
@@ -101,7 +105,7 @@ rmsk = rmsk_to_gtf(rmsk)
 
 ### parse and filter gencode ###
 logger.info(
-    "Parsing gencode GTF, filtering for high confidence transcripts from chromosome(s) {' '.join(chrs)}"
+    f"Parsing gencode GTF, filtering for high confidence transcripts from chromosome(s) {my_chrs}"
 )
 # from https://support.10xgenomics.com/single-cell-gene-expression/software/release-notes/build
 BIOTYPES = [
@@ -213,7 +217,7 @@ pr.PyRanges(gtf).to_gtf(snakemake.output.joint_gtf)
 # use gffread to extract sequences
 shell(
     "gffread "
-    "-w {snakemake.output.fa} "
+    "-w {snakemake.output.txome_fa} "
     "-g {snakemake.input.genome_fa} "
     "{snakemake.output.joint_gtf} >> {snakemake.log} 2>&1"
 )

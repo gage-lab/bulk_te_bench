@@ -1,6 +1,6 @@
 checkpoint simulate_reads:
     input:
-        txome_fa=rules.make_txome.output.fa,
+        txome_fa=rules.make_txome.output.txome_fa,
         counts=lambda wc: config["txomes"][wc.txome]["simulations"][wc.sim]["counts"],
     output:
         reads=directory("results/{txome}/{sim}/reads"),

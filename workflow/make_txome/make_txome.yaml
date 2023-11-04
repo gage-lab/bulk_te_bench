@@ -6,6 +6,7 @@ dependencies:
   - git-lfs>=2.2.1
   - gffread
   - python=3.10
+  - samtools
   - pip
   - pip:
     - git+https://github.com/mikecuoco/myutils.git

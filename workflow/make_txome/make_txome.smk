@@ -4,7 +4,8 @@ rule make_txome:
         gencode_gtf=remote_or_local(config["gencode_gtf"]),
         rmsk_out=remote_or_local(config["rmsk_out"]),
     output:
-        fa="results/{txome}/txome.fa",
+        genome_fa="results/{txome}/genome.fa",
+        txome_fa="results/{txome}/txome.fa",
         genes_gtf="results/{txome}/txome_genes.gtf",
         rmsk_gtf="results/{txome}/txome_rmsk.gtf",
         joint_gtf="results/{txome}/txome_joint.gtf",

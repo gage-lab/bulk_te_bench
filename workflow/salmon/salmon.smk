@@ -1,6 +1,6 @@
 rule salmon_index:
     input:
-        rules.make_txome.output.fa,
+        rules.make_txome.output.txome_fa,
     output:
         multiext(
             "results/{txome}/salmon_index/",
@@ -66,7 +66,7 @@ rule salmon_quant_reads:
 rule salmon_quant_bam:
     input:
         bam=rules.star_align.output.txome_bam,
-        txome=rules.make_txome.output.fa,
+        txome=rules.make_txome.output.txome_fa,
         gtf=rules.make_txome.output.joint_gtf,
     output:
         quant_tx="results/{txome}/{sim}/salmon_quant_bam/{sample}/quant.sf",
