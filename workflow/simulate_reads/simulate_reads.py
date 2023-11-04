@@ -20,7 +20,6 @@ from pathlib import Path
 
 import pandas as pd
 from Bio import SeqIO
-from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from joblib import Parallel, delayed
 from rpy2 import robjects as ro
@@ -58,9 +57,7 @@ def polyester_producer(
 outdir = Path(snakemake.output[0])
 shell("cp {snakemake.input.counts} {snakemake.output.counts}")
 counts = pd.read_csv(snakemake.input.counts, sep="\t", index_col=0)
-import pdb
 
-pdb.set_trace()
 n_transcripts, n_samples = counts.shape
 logger.info(
     f"Simulating reads from {n_transcripts} transcripts from {n_samples} samples with polyester"

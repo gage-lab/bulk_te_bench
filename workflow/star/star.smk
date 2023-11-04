@@ -12,10 +12,10 @@ rule star_index:
 
 rule star_align:
     input:
-        fq1="results/{txome}/{sim}/reads/{sample}_1.fasta.gz",
-        fq2="results/{txome}/{sim}/reads/{sample}_2.fasta.gz",
+        fq1=get_sim_r1,
+        fq2=get_sim_r2,
         idx=rules.star_index.output,
-        gtf=rules.make_txome.output.joint_gtf,  # TODO: change this to gtf with rmsk features
+        gtf=rules.make_txome.output.joint_gtf,  # TODO: change this to gtf with rmsk and unspliced features
     output:
         genome_bam="results/{txome}/{sim}/star_align/{sample}/Aligned.out.bam",
         txome_bam="results/{txome}/{sim}/star_align/{sample}/Aligned.toTranscriptome.out.bam",

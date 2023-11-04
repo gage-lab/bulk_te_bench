@@ -33,6 +33,34 @@ configfile: "config.yaml"
 
 validate(config, "config.schema.yaml")
 
+
+def get_sim_r1(wc):
+    checkpoint_output = checkpoints.simulate_reads.get(**wc).output[0]
+    return expand(
+        "results/{txome}/{sim}/reads/{sample}_1.fasta.gz",
+        txome=wc.txome,
+        sim=wc.sim,
+        sample=wc.sample,
+    )
+
+
+def get_sim_r2(wc):
+    checkpoint_output = checkpoints.simulate_reads.get(**wc).output[0]
+    return expand(
+        "results/{txome}/{sim}/reads/{sample}_2.fasta.gz",
+        txome=wc.txome,
+        sim=wc.sim,
+        sample=wc.sample,
+    )
+
+
+include: "make_txome/make_txome.smk"
+include: "simulate_reads/simulate_reads.smk"
+include: "star/star.smk"
+include: "tetranscripts/tetranscripts.smk"
+include: "salmon/salmon.smk"
+
+
 ##### setup output samples #####
 output = []
 for txome in config["txomes"]:
@@ -40,16 +68,27 @@ for txome in config["txomes"]:
         counts = pd.read_csv(data["counts"], sep="\t", index_col=0)
         for x in range(0, counts.shape[1]):
             num = "0" + str(x + 1) if x < 10 else x + 1
-            file = "results/{}/{}/tetranscripts/sample_{}/TEtranscripts_out.cntTable".format(
-                txome, sim, num
-            )
-            output.append(file)
-
-
-include: "make_txome/make_txome.smk"
-include: "simulate_reads/simulate_reads.smk"
-include: "star/star.smk"
-include: "tetranscripts/tetranscripts.smk"
+            res = [
+                expand(
+                    rules.tetranscripts.output,
+                    txome=txome,
+                    sim=sim,
+                    sample="sample_" + num,
+                ),
+                expand(
+                    rules.salmon_quant_reads.output,
+                    txome=txome,
+                    sim=sim,
+                    sample="sample_" + num,
+                ),
+                expand(
+                    rules.salmon_quant_bam.output,
+                    txome=txome,
+                    sim=sim,
+                    sample="sample_" + num,
+                ),
+            ]
+            output.extend(res)
 
 
 rule all:

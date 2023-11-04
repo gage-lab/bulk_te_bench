@@ -1,4 +1,4 @@
-rule simulate_reads:
+checkpoint simulate_reads:
     input:
         txome_fa=rules.make_txome.output.fa,
         counts=lambda wc: config["txomes"][wc.txome]["simulations"][wc.sim]["counts"],
