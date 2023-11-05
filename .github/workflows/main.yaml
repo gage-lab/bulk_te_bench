@@ -45,4 +45,4 @@ jobs:
       - name: Generate test data
         run: cd .test/ngs-test-data && snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
       - name: Run pipeline
-        run: snakemake all --use-conda --show-failed-logs --c2 --conda-cleanup-pkgs cache --all-temp --directory .test
+        run: snakemake all --use-conda --show-failed-logs -c2 --conda-cleanup-pkgs cache --all-temp --directory .test
