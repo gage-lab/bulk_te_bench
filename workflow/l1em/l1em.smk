@@ -55,7 +55,7 @@ rule l1em:
         bam=rules.samtools_sort.output,
         bai=rules.samtools_index.output,
         l1em=rules.get_l1em.output,
-        index=rules.bwa_index.output[0],
+        index=rules.bwa_index.output,
         l1em_ref=rules.build_l1em_ref.output,
     output:
         full_counts="results/{txome}/{sim}/l1em/{sample}/full_counts.txt",
@@ -72,15 +72,13 @@ rule l1em:
         touch {log}
         l1em=$(readlink -f {input.l1em})
         bam=$(readlink -f {input.bam})
-        ref=$(readlink -f {input.index})
+        ref=$(readlink -f {input.index[0]})
         ref=${{ref%.amb}}
         log=$(readlink -f {log})
         mkdir -p $outdir && cd $outdir
 
         trap "rm -rf G_of_R split_fqs idL1reads L1EM" EXIT
 
-        echo "Running L1EM on $bam with $ref" >> $log 2>&1
-        ls -lh $ref* >> $log 2>&1
         sed -i 's/threads=[0-9]*/threads={threads}/g' $l1em/run_L1EM.sh
         bash -e $l1em/run_L1EM.sh $bam $l1em $ref >> $log 2>&1
         """
