@@ -5,7 +5,6 @@ rule get_l1em:
         "git clone https://github.com/FenyoLab/L1EM {output}"
 
 
-# TODO: use same version fo bwa that is in l1em conda env
 rule bwa_index:
     input:
         rules.make_txome.output.genome_fa,
@@ -22,8 +21,14 @@ rule bwa_index:
         "results/{txome}/bwa_index.log",
     params:
         algorithm="bwtsw",
-    wrapper:
-        "v1.28.0/bio/bwa/index"
+    conda:
+        "l1em.yaml"
+    shell:
+        """
+        genome=$(dirname {output.idx[0]})/$(basename {input})
+        cp {input} $genome
+        bwa index -a {params.algorithm} $genome > {log} 2>&1
+        """
 
 
 rule build_l1em_ref:
@@ -74,6 +79,6 @@ rule l1em:
 
         trap "rm -rf G_of_R split_fqs idL1reads L1EM" EXIT
 
-        sed -i 's/threads=16/threads={threads}/g' $l1em/run_L1EM.sh
+        sed -i 's/threads=[0-9]*/threads={threads}/g' $l1em/run_L1EM.sh
         bash -e $l1em/run_L1EM.sh $bam $l1em $ref > $log 2>&1
         """
