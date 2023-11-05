@@ -16,3 +16,4 @@ dependencies:
   - rpy2
   - joblib
   - biopython
+  - pandas
