@@ -60,6 +60,7 @@ rule l1em:
         "l1em.yaml"
     log:
         "results/{txome}/{sim}/l1em/{sample}/l1em.log",
+    threads: 16
     shell:
         """
         outdir=$(dirname {output.filter_fpm})
@@ -73,5 +74,6 @@ rule l1em:
 
         trap "rm -rf G_of_R split_fqs idL1reads L1EM" EXIT
 
-        bash -e $l1em/run_L1EM_withlessmemory.sh $bam $l1em $ref > $log 2>&1
+        sed -i 's/threads=16/threads={threads}/' $l1em/run_L1EM.sh
+        bash -e $l1em/run_L1EM.sh $bam $l1em $ref > $log 2>&1
         """
