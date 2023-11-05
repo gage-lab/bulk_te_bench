@@ -14,9 +14,6 @@ properties:
   gencode_gtf:
     type: string
 
-  rmsk_gtf:
-    type: string
-
   txomes:
     type: object
     patternProperties:
@@ -54,5 +51,4 @@ required:
   - genome_fa
   - rmsk_out
   - gencode_gtf
-  - rmsk_gtf
   - txomes

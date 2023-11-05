@@ -1,5 +1,8 @@
 # Benchmarking TE quantification approaches
 
+[![Tests](https://github.com/gage-lab/bulk_te_bench/actions/workflows/main.yaml/badge.svg)](https://github.com/gage-lab/bulk_te_bench/actions/workflows/main.yaml)
+[![Snakemake](https://img.shields.io/badge/snakemake-≥7.32.0-brightgreen.svg)](https://snakemake.github.io)
+
 ## Repository structure
 
 ```bash
