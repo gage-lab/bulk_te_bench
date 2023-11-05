@@ -73,5 +73,5 @@ rule l1em:
 
         trap "rm -rf G_of_R split_fqs idL1reads L1EM" EXIT
 
-        bash -e $l1em/run_L1EM.sh $bam $l1em $ref > $log 2>&1
+        bash -e $l1em/run_L1EM_withlessmemory.sh $bam $l1em $ref > $log 2>&1
         """
