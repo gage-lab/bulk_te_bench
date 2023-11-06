@@ -125,6 +125,15 @@ for gene in chr22_GTEx.index:
         else:
             print("ERROR: gene has no transcripts")
 
+for tx in SeqIO.parse(txome.txome_fa, "fasta"):
+    # skip genes, L1HS only
+    if "chr" in tx.id:
+        counts["tx_id"].append(tx.id)
+        for sample in chr22_GTEx.columns:
+            # uniform across all samples
+            counts[sample].append(5 * len(tx.seq) // 100)
+
+    # check if gene is in dictionary
 
 # save and simulate
 counts = pd.DataFrame(counts).set_index("tx_id")
