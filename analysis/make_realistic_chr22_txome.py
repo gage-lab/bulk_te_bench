@@ -25,6 +25,16 @@ def make_realistic_counts(
     txome_exists: bool = False,
     chromosone: str = "chr22",
 ) -> pd.DataFrame():
+    """
+    Simulate realistic counts from GTEx data
+    @param GTEx_counts: Path to GTEx counts file
+    @param GTEx_metadata: Path to GTEx metadata file
+    @param GENCODE_annotation: Path to GENCODE annotation file
+    @param outdir: Path to transcriptome output directory
+    @param txome_exists: Boolean indicating whether or not the transcriptome already exists
+    @param chromosone: Chromosome to subset transcriptome
+    @return simulated transcript count matrix
+    """
 
     # change dir to this one
     os.chdir(Path(__file__).parent)
