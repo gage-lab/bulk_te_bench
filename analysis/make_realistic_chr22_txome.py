@@ -16,9 +16,6 @@ from src.txome import Txome
 random.seed(1)
 np.random.seed(1)
 
-# TODO filter transcripts to all_tx = set([tx.id for tx in SeqIO.parse(txome.txome_fa, "fasta")])
-# BEFORE iterating through gene count matrix so that the distributions are more accurate
-
 
 def make_realistic_counts(
     GTEx_counts: Path(),
@@ -62,8 +59,12 @@ def make_realistic_counts(
     if not txome_exists:
         txome.make_txome()
 
+    all_tx = set([tx.id for tx in SeqIO.parse(txome.txome_fa, "fasta")])
+
     # create a dictionary mapping gene name to # of transcripts
     gene_to_tx_df = pd.read_csv(OUTDIR / "txome_t2g.tsv", sep="\t", header=None)
+    # subset to only transcripts in txome
+    gene_to_tx_df = gene_to_tx_df.loc[gene_to_tx_df[0].isin(all_tx), :]
     # Mapping of genes to list of transcripts
     gene_to_tx = gene_to_tx_df.groupby(1).apply(lambda x: x[0].tolist()).to_dict()
 
@@ -137,4 +138,4 @@ def make_realistic_counts(
     all_tx = set([tx.id for tx in SeqIO.parse(txome.txome_fa, "fasta")])
     counts = pd.DataFrame(counts).set_index("tx_id")
 
-    return counts.loc[counts.index.isin(all_tx), :]  # return only txs in txome
+    return counts
