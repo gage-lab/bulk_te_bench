@@ -16,6 +16,9 @@ from src.txome import Txome
 random.seed(1)
 np.random.seed(1)
 
+# TODO filter transcripts to all_tx = set([tx.id for tx in SeqIO.parse(txome.txome_fa, "fasta")])
+# BEFORE iterating through gene count matrix so that the distributions are more accurate
+
 
 def make_realistic_counts(
     GTEx_counts: Path(),
@@ -46,16 +49,17 @@ def make_realistic_counts(
     GTEx_COUNTS_PATH = GTEx_counts
     GTEx_METADATA_PATH = GTEx_metadata
 
-    if not txome_exists:
-        txome = Txome(
-            outdir=OUTDIR, genome_fa=GENOME_FA, tx_gtf=TX_GTF, chromosome=chromosone
-        )
-        txome.get_rmsk_seqs(
-            parsed_rmsk=RMSK_TSV,
-            query="repName == 'L1HS' & length > 6000",
-        )
+    txome = Txome(
+        outdir=OUTDIR, genome_fa=GENOME_FA, tx_gtf=TX_GTF, chromosome=chromosone
+    )
+    txome.get_rmsk_seqs(
+        parsed_rmsk=RMSK_TSV,
+        query="repName == 'L1HS' & length > 6000",
+    )
 
-        txome.txome_fa = OUTDIR / "txome.fa"
+    txome.txome_fa = OUTDIR / "txome.fa"
+
+    if not txome_exists:
         txome.make_txome()
 
     # create a dictionary mapping gene name to # of transcripts
@@ -129,4 +133,8 @@ def make_realistic_counts(
             else:
                 print("ERROR: gene has no transcripts")
 
-    return pd.DataFrame(counts).set_index("tx_id")
+    # get non-duplicated transcripts in txome
+    all_tx = set([tx.id for tx in SeqIO.parse(txome.txome_fa, "fasta")])
+    counts = pd.DataFrame(counts).set_index("tx_id")
+
+    return counts.loc[counts.index.isin(all_tx), :]  # return only txs in txome
