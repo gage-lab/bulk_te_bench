@@ -9,6 +9,7 @@ rule bwa_index:
     input:
         rules.make_txome.output.genome_fa,
     output:
+        fa="results/{txome}/bwa_index/genome.fa",
         idx=multiext(
             "results/{txome}/bwa_index/genome.fa",
             ".amb",
@@ -25,16 +26,15 @@ rule bwa_index:
         "l1em.yaml"
     shell:
         """
-        genome=$(dirname {output.idx[0]})/$(basename {input})
-        cp {input} $genome
-        bwa index -a {params.algorithm} $genome > {log} 2>&1
+        cp {input} {output.fa}
+        bwa index -a {params.algorithm} {output.fa} > {log} 2>&1
         """
 
 
 rule build_l1em_ref:
     input:
-        genome=rules.make_txome.output.genome_fa,
-        index=rules.bwa_index.output,
+        genome=rules.bwa_index.output.fa,
+        index=rules.bwa_index.output.idx,
         l1em=rules.get_l1em.output,
     output:
         "results/{txome}/build_l1em_ref.log",
@@ -55,7 +55,8 @@ rule l1em:
         bam=rules.samtools_sort.output,
         bai=rules.samtools_index.output,
         l1em=rules.get_l1em.output,
-        index=rules.bwa_index.output,
+        fa=rules.bwa_index.output.fa,
+        index=rules.bwa_index.output.idx,
         l1em_ref=rules.build_l1em_ref.output,
     output:
         full_counts="results/{txome}/{sim}/l1em/{sample}/full_counts.txt",
@@ -72,8 +73,7 @@ rule l1em:
         touch {log}
         l1em=$(readlink -f {input.l1em})
         bam=$(readlink -f {input.bam})
-        ref=$(readlink -f {input.index[0]})
-        ref=${{ref%.amb}}
+        ref=$(readlink -f {input.fa})
         log=$(readlink -f {log})
         mkdir -p $outdir && cd $outdir
 
