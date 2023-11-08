@@ -33,8 +33,8 @@ rule salmon_index:
 
 rule salmon_quant_reads:
     input:
-        r1=get_sim_r1,
-        r2=get_sim_r2,
+        r1="results/{txome}/{sim}/reads/{sample}_1.fasta.gz",
+        r2="results/{txome}/{sim}/reads/{sample}_2.fasta.gz",
         gtf=rules.make_txome.output.joint_gtf,
         index=rules.salmon_index.output,
     output:

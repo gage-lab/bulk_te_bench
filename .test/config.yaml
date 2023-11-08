@@ -15,4 +15,3 @@ txomes:
       test_sim:
         strand_specific: True
         readlen: 100
-        counts: counts.tsv # count matrix tsv here

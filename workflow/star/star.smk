@@ -12,8 +12,8 @@ rule star_index:
 
 rule star_align:
     input:
-        fq1=get_sim_r1,
-        fq2=get_sim_r2,
+        fq1="results/{txome}/{sim}/reads/{sample}_1.fasta.gz",
+        fq2="results/{txome}/{sim}/reads/{sample}_2.fasta.gz",
         idx=rules.star_index.output,
         gtf=rules.make_txome.output.joint_gtf,  # TODO: change this to gtf with rmsk and unspliced features
     output:

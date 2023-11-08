@@ -55,7 +55,6 @@ def polyester_producer(
 
 
 outdir = Path(snakemake.output[0])
-shell("cp {snakemake.input.counts} {snakemake.output.counts}")
 counts = pd.read_csv(snakemake.input.counts, sep="\t", index_col=0)
 
 n_transcripts, n_samples = counts.shape

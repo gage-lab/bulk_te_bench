@@ -15,4 +15,3 @@ txomes:
       sim1:
         strand_specific: True
         readlen: 100
-        counts: "resources/chr22_l1hs_txome_old/sim_reads_1/counts.tsv" # count matrix tsv here

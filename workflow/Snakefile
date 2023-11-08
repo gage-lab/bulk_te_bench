@@ -34,26 +34,6 @@ configfile: "config.yaml"
 validate(config, "config.schema.yaml")
 
 
-def get_sim_r1(wc):
-    checkpoint_output = checkpoints.simulate_reads.get(**wc).output[0]
-    return expand(
-        "results/{txome}/{sim}/reads/{sample}_1.fasta.gz",
-        txome=wc.txome,
-        sim=wc.sim,
-        sample=wc.sample,
-    )
-
-
-def get_sim_r2(wc):
-    checkpoint_output = checkpoints.simulate_reads.get(**wc).output[0]
-    return expand(
-        "results/{txome}/{sim}/reads/{sample}_2.fasta.gz",
-        txome=wc.txome,
-        sim=wc.sim,
-        sample=wc.sample,
-    )
-
-
 include: "make_txome/make_txome.smk"
 include: "simulate_reads/simulate_reads.smk"
 include: "star/star.smk"
@@ -63,22 +43,27 @@ include: "l1em/l1em.smk"
 
 
 ##### setup output samples #####
-output = []
 quantifiers = [
     rules.tetranscripts.output,
     rules.salmon_quant_reads.output,
     rules.salmon_quant_bam.output,
     rules.l1em.output,
 ]
-for txome in config["txomes"]:
-    for sim, data in config["txomes"][txome]["simulations"].items():
-        counts = pd.read_csv(data["counts"], sep="\t", index_col=0)
-        for x in range(0, counts.shape[1]):
-            num = "0" + str(x + 1) if x < 10 else x + 1
+
+
+def get_final(wc):
+    output = []
+    for txome in config["txomes"]:
+        for sim in config["txomes"][txome]["simulations"]:
+            wildcards = {"txome": txome, "sim": sim}  # manually set wildcards
+            checkpt_output = checkpoints.simulate_reads.get(**wildcards).output[0]
+            samples = glob_wildcards(os.path.join(checkpt_output, "final")).sample
             for q in quantifiers:
-                output.append(expand(q, txome=txome, sim=sim, sample="sample_" + num))
+                for sample in samples:
+                    output.extend(expand(q, sample=sample, txome=txome, sim=sim))
+    return output
 
 
 rule all:
     input:
-        output,
+        get_final,

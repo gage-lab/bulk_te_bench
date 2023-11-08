@@ -41,7 +41,6 @@ properties:
                 required:
                   - strand_specific
                   - readlen
-                  - counts
         required:
           - rmsk_query
           - chrs
