@@ -51,8 +51,8 @@ quantifiers = [
 ]
 
 
-def get_final(wc):
-    output = []
+def get_final_output(wc):
+    final_output = []
     for txome in config["txomes"]:
         for sim in config["txomes"][txome]["simulations"]:
             wildcards = {"txome": txome, "sim": sim}  # manually set wildcards
@@ -60,10 +60,10 @@ def get_final(wc):
             samples = glob_wildcards(os.path.join(checkpt_output, "final")).sample
             for q in quantifiers:
                 for sample in samples:
-                    output.extend(expand(q, sample=sample, txome=txome, sim=sim))
-    return output
+                    final_output.extend(expand(q, sample=sample, txome=txome, sim=sim))
+    return final_output
 
 
 rule all:
     input:
-        get_final,
+        final_output,
