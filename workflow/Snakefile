@@ -35,7 +35,7 @@ validate(config, "config.schema.yaml")
 
 
 include: "make_txome/make_txome.smk"
-include: "simulate_reads/simulate_reads.smk"
+include: "simulate/simulate.smk"
 include: "star/star.smk"
 include: "tetranscripts/tetranscripts.smk"
 include: "salmon/salmon.smk"
