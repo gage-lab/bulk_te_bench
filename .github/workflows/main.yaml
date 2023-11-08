@@ -41,7 +41,7 @@ jobs:
           channels: conda-forge,bioconda,nodefaults
           channel-priority: strict
       - name: Install Snakemake
-        run: mamba install snakemake
+        run: mamba install snakemake biopython pandas
       - name: Generate test data
         run: cd .test/ngs-test-data && snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
       - name: Run pipeline
