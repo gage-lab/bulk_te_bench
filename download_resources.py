@@ -4,6 +4,7 @@ __author__ = "Michael Cuoco"
 
 from pathlib import Path
 from subprocess import Popen
+
 from myutils.rmsk import read_rmsk
 
 
@@ -25,6 +26,10 @@ if __name__ == "__main__":
     curl(
         "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/gencode.v44.primary_assembly.basic.annotation.gtf.gz",
         "resources/gencode.v44.primary_assembly.basic.annotation.gtf",
+    )
+    curl(
+        "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.basic.annotation.gtf.gz",
+        "resources/gencode.v26.basic.annotation.gtf",
     )
     read_rmsk(
         "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.out.gz"
