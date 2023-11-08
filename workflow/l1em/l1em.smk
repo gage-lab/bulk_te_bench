@@ -77,8 +77,8 @@ rule l1em:
         log=$(readlink -f {log})
         mkdir -p $outdir && cd $outdir
 
-        sed -i 's/threads=[0-9]*/threads={threads}/g' $l1em/run_L1EM.sh
-        bash -e $l1em/run_L1EM.sh $bam $l1em $ref >> $log 2>&1
+        trap "rm -rf G_of_R split_fqs idL1reads L1EM" EXIT
 
-        rm -rf G_of_R split_fqs idL1reads L1EM
+        sed -i 's/threads=[0-9]*/threads={threads}/g' $l1em/run_L1EM.sh
+        bash -e $l1em/run_L1EM.sh $bam $l1em $ref > $log 2>&1
         """
