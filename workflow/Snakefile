@@ -66,4 +66,4 @@ def get_final_output(wc):
 
 rule all:
     input:
-        final_output,
+        get_final_output,
