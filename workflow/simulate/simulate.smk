@@ -37,7 +37,7 @@ checkpoint simulate_reads:
     output:
         reads=directory("results/{txome}/{sim}/reads"),
     conda:
-        "simulate_reads.yaml"
+        "simulate.yaml"
     threads: 16
     params:
         strand_specific=lambda wc: config["txomes"][wc.txome]["simulations"][wc.sim][
