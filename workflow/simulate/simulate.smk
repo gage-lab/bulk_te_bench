@@ -30,7 +30,7 @@ rule simulate_te_counts:
         unpack(get_simulate_counts_input),
         rules.simulate_counts.output.counts,
     output:
-        counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
+        te_counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
     log:
         "results/{txome}/{tx_sim}/{te_sim}/simulate_counts.log",
     conda:
