@@ -28,7 +28,7 @@ properties:
               type: string
           simulations:
             type: object
-            patternPproperties:
+            patternProperties:
               "uniform_sim|gtex_sim|test_sim":
                 type: object
                 properties:
@@ -36,6 +36,8 @@ properties:
                     type: array
                     items:
                       type: string
+                      patternProperties:
+                        "single_intergenic_l1hs"
                   readlen:
                     type: integer
                   strand_specific:
