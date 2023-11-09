@@ -17,3 +17,5 @@ dependencies:
   - joblib
   - biopython
   - pandas
+  - pyranges
+  - scipy

@@ -29,7 +29,7 @@ properties:
           simulations:
             type: object
             patternPproperties:
-              "^.*$":
+              "uniform_sim|gtex_sim|test_sim":
                 type: object
                 properties:
                   readlen:

@@ -1,33 +1,28 @@
-rule test_sim_counts:
-    input:
-        txome_fa=rules.make_txome.output.txome_fa,
-    output:
-        counts="results/{txome}/test_sim/true_counts.tsv",
-    run:
-        from collections import defaultdict
-        from Bio import SeqIO
-        import pandas as pd
+def get_simulate_counts_input(wc):
+    sim_config = config["txomes"][wc.txome]["simulations"][wc.sim]
+    out = {
+        "txome_fa": rules.make_txome.output.txome_fa,
+        "genes_gtf": rules.make_txome.output.genes_gtf,
+        "rmsk_gtf": rules.make_txome.output.rmsk_gtf,
+    }
+    if wc.sim == "gtex_sim":
+        out["gtex_counts"] = sim_config["gtex_counts"]
+        out["gtex_metadata"] = sim_config["gtex_metadata"]
 
-        TX = [
-            "ENST00000401850.5",
-            "ENST00000401959.6",
-            "ENST00000401975.5",
-            "ENST00000401994.5",
-            "L1HS_dup1",
-        ]
-        counts = defaultdict(list)
-        for tx in SeqIO.parse(input.txome_fa, "fasta"):
-            if tx.id not in TX:
-                continue
-            counts["tx_id"].append(tx.id)
-            for sample in range(0, 2):
-                if "ENS" in tx.id:
-                    counts[sample].append(20 * len(tx.seq) // 100)
-                elif "L1HS" in tx.id:
-                    counts[sample].append(sample + 1 * len(tx.seq) // 100)
-                else:
-                    counts[sample].append(0)
-        pd.DataFrame(counts).to_csv(output.counts, sep="\t", index=False)
+    return out
+
+
+rule simulate_counts:
+    input:
+        unpack(get_simulate_counts_input),
+    output:
+        counts="results/{txome}/{sim}/true_counts.tsv",
+    log:
+        "results/{txome}/{sim}/simulate_counts.log",
+    conda:
+        "simulate.yaml"
+    script:
+        "simulate_counts.py"
 
 
 checkpoint simulate_reads:
