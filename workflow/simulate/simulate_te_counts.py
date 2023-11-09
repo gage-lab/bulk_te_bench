@@ -23,7 +23,7 @@ import pyranges as pr
 from Bio import SeqIO
 
 # Get mean tpm in the tx count table
-counts = pd.read_csv(snakemake.input.counts, sep="\t", index_col=0)
+counts = pd.read_csv(snakemake.input.tx_counts, sep="\t", index_col=0)
 mean_counts = counts.mean(axis=1)
 
 tx_tpms = []
