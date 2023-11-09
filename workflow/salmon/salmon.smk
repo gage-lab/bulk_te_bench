@@ -33,16 +33,16 @@ rule salmon_index:
 
 rule salmon_quant_reads:
     input:
-        r1="results/{txome}/{sim}/reads/{sample}_1.fasta.gz",
-        r2="results/{txome}/{sim}/reads/{sample}_2.fasta.gz",
+        r1="results/{txome}/{tx_sim}/{te_sim}/reads/{sample}_1.fasta.gz",
+        r2="results/{txome}/{tx_sim}/{te_sim}/reads/{sample}_2.fasta.gz",
         gtf=rules.make_txome.output.joint_gtf,
         index=rules.salmon_index.output,
     output:
-        quant_tx="results/{txome}/{sim}/salmon_quant_reads/{sample}/quant.sf",
-        quant_ge="results/{txome}/{sim}/salmon_quant_reads/{sample}/quant.genes.sf",
-        lib="results/{txome}/{sim}/salmon_quant_reads/{sample}/lib_format_counts.json",
+        quant_tx="results/{txome}/{tx_sim}/{te_sim}/salmon_quant_reads/{sample}/quant.sf",
+        quant_ge="results/{txome}/{tx_sim}/{te_sim}/salmon_quant_reads/{sample}/quant.genes.sf",
+        lib="results/{txome}/{tx_sim}/{te_sim}/salmon_quant_reads/{sample}/lib_format_counts.json",
     log:
-        "results/{txome}/{sim}/salmon_quant_reads/{sample}/{sample}.log",
+        "results/{txome}/{tx_sim}/{te_sim}/salmon_quant_reads/{sample}/{sample}.log",
     params:
         libtype="A",
         extra="",
@@ -69,10 +69,10 @@ rule salmon_quant_bam:
         txome=rules.make_txome.output.txome_fa,
         gtf=rules.make_txome.output.joint_gtf,
     output:
-        quant_tx="results/{txome}/{sim}/salmon_quant_bam/{sample}/quant.sf",
-        quant_ge="results/{txome}/{sim}/salmon_quant_bam/{sample}/quant.genes.sf",
+        quant_tx="results/{txome}/{tx_sim}/{te_sim}/salmon_quant_bam/{sample}/quant.sf",
+        quant_ge="results/{txome}/{tx_sim}/{te_sim}/salmon_quant_bam/{sample}/quant.genes.sf",
     log:
-        "results/{txome}/{sim}/salmon_quant_bam/{sample}/{sample}.log",
+        "results/{txome}/{tx_sim}/{te_sim}/salmon_quant_bam/{sample}/{sample}.log",
     params:
         libtype="A",
         extra="",

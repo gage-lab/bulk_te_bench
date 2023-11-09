@@ -214,7 +214,7 @@ logger.info(f"Concatenating rmsk and gencode")
 gtf = pd.concat([genes, rmsk]).sort_values(["Chromosome", "Start", "End"])
 pr.PyRanges(gtf).to_gtf(snakemake.output.joint_gtf)
 
-# use gffread to extract sequences
+# use gffread to extract unspliced, spliced, and TE sequences
 shell(
     "gffread "
     "-w {snakemake.output.txome_fa} "

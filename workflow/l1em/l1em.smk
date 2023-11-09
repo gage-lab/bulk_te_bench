@@ -59,13 +59,13 @@ rule l1em:
         index=rules.bwa_index.output.idx,
         l1em_ref=rules.build_l1em_ref.output,
     output:
-        full_counts="results/{txome}/{sim}/l1em/{sample}/full_counts.txt",
-        l1hs_counts="results/{txome}/{sim}/l1em/{sample}/l1hs_transcript_counts.txt",
-        filter_fpm="results/{txome}/{sim}/l1em/{sample}/filter_L1HS_FPM.txt",
+        full_counts="results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/full_counts.txt",
+        l1hs_counts="results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/l1hs_transcript_counts.txt",
+        filter_fpm="results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/filter_L1HS_FPM.txt",
     conda:
         "l1em.yaml"
     log:
-        "results/{txome}/{sim}/l1em/{sample}/l1em.log",
+        "results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/l1em.log",
     threads: 16
     shell:
         """

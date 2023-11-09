@@ -23,7 +23,7 @@ import pyranges as pr
 from Bio import SeqIO
 from scipy.stats import dirichlet
 
-txome_gtf = pr.read_gtf(snakemake.input.genes_gtf)
+genes_gtf = pr.read_gtf(snakemake.input.genes_gtf)
 rmsk_gtf = pr.read_gtf(snakemake.input.rmsk_gtf)
 
 ## TEST COUNTS ##
@@ -34,7 +34,6 @@ if snakemake.wildcards.sim == "test_sim":
         "ENST00000401959.6",
         "ENST00000401975.5",
         "ENST00000401994.5",
-        "L1HS_dup1",
     ]
 
     counts = defaultdict(list)
@@ -44,6 +43,7 @@ if snakemake.wildcards.sim == "test_sim":
         counts["tx_id"].append(tx.id)
         for sample in range(0, 2):
             counts[sample].append(20 * len(tx.seq) // 100)
+
     pd.DataFrame(counts).to_csv(snakemake.output.counts, sep="\t", index=False)
 
 ## UNIFORM COUNTS ##
@@ -51,6 +51,8 @@ elif snakemake.wildcards.sim == "uniform_sim":
     logger.info("Generating uniform counts")
     counts = defaultdict(list)
     for tx in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
+        if tx not in genes_gtf["transcript_id"].unique():
+            continue
         counts["tx_id"].append(tx.id)
         for sample in range(0, 7):
             counts[sample].append(20 * len(tx.seq) // 100)
@@ -75,7 +77,7 @@ elif snakemake.wildcards.sim == "gtex_sim":
 
     # get shared genes in GTEx and our txome
     g2t = (
-        txome_gtf.groupby("gene_id")
+        genes_gtf.groupby("gene_id")
         .apply(lambda x: x["transcript_id"].tolist())
         .to_dict()
     )

@@ -12,13 +12,13 @@ rule tetranscripts:
         genes_gtf=rules.make_txome.output.genes_gtf,
         rmsk_gtf=rules.make_txome.output.rmsk_gtf,
     output:
-        tecount="results/{txome}/{sim}/tetranscripts/{sample}/TEtranscripts_out.cntTable",
-        telocal="results/{txome}/{sim}/tetranscripts/{sample}/TElocal_out.cntTable",
+        tecount="results/{txome}/{tx_sim}/{te_sim}/tetranscripts/{sample}/TEtranscripts_out.cntTable",
+        telocal="results/{txome}/{tx_sim}/{te_sim}/tetranscripts/{sample}/TElocal_out.cntTable",
     conda:
         "tetranscripts.yaml"
     log:
-        tecount="results/{txome}/{sim}/tetranscripts/{sample}/TEtranscripts.log",
-        telocal="results/{txome}/{sim}/tetranscripts/{sample}/TElocal.log",
+        tecount="results/{txome}/{tx_sim}/{te_sim}/tetranscripts/{sample}/TEtranscripts.log",
+        telocal="results/{txome}/{tx_sim}/{te_sim}/tetranscripts/{sample}/TElocal.log",
     params:
         strandedness=get_strandedness,
         mode="multi",  # can be multi or uniq

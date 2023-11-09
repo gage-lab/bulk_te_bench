@@ -3,7 +3,7 @@
 # reference files to use
 genome_fa: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
 rmsk_out: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.out.gz"
-gencode_gtf: "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_42/gencode.v42.basic.annotation.gtf.gz"
+gencode_gtf: "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.basic.annotation.gtf.gz"
 
 # list of transcriptomes generate and simulate reads from
 txomes:
@@ -12,6 +12,8 @@ txomes:
     chrs:
       - "chr22"
     simulations:
-      sim1:
+      gtex_sim:
         strand_specific: True
         readlen: 100
+        gtex_counts: resources/GTEx/bulk-gex_v8_rna-seq_GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct.gz
+        gtex_metadata: resources/GTEx/annotations_v8_GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt

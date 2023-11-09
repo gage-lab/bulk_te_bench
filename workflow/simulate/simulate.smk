@@ -16,9 +16,9 @@ rule simulate_counts:
     input:
         unpack(get_simulate_counts_input),
     output:
-        counts="results/{txome}/{sim}/true_counts.tsv",
+        counts="results/{txome}/{tx_sim}/true_counts.tsv",
     log:
-        "results/{txome}/{sim}/simulate_counts.log",
+        "results/{txome}/{tx_sim}/simulate_counts.log",
     conda:
         "simulate.yaml"
     script:
@@ -30,7 +30,7 @@ checkpoint simulate_reads:
         txome_fa=rules.make_txome.output.txome_fa,
         counts=rules.simulate_counts.output.counts,
     output:
-        reads=directory("results/{txome}/{sim}/reads"),
+        reads=directory("results/{txome}/{tx_sim}/{te_sim}/reads"),
     conda:
         "simulate.yaml"
     threads: 16
@@ -40,6 +40,6 @@ checkpoint simulate_reads:
         ],
         readlen=lambda wc: config["txomes"][wc.txome]["simulations"][wc.sim]["readlen"],
     log:
-        "results/{txome}/{sim}/simulate_reads.log",
+        "results/{txome}/{tx_sim}/{te_sim}/simulate_reads.log",
     script:
         "simulate_reads.py"

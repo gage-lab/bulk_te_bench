@@ -13,5 +13,7 @@ txomes:
       - "chr22"
     simulations:
       test_sim:
+        te_sim:
+          - "single_intergenic_l1hs"
         strand_specific: True
         readlen: 100
