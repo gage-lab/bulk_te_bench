@@ -28,7 +28,7 @@ rule simulate_counts:
 checkpoint simulate_reads:
     input:
         txome_fa=rules.make_txome.output.txome_fa,
-        counts="results/{txome}/{sim}/true_counts.tsv",
+        counts=rules.simulate_counts.output.counts,
     output:
         reads=directory("results/{txome}/{sim}/reads"),
     conda:
