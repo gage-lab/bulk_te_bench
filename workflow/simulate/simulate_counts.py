@@ -27,7 +27,7 @@ genes_gtf = pr.read_gtf(snakemake.input.genes_gtf)
 rmsk_gtf = pr.read_gtf(snakemake.input.rmsk_gtf)
 
 ## TEST COUNTS ##
-if snakemake.wildcards.sim == "test_sim":
+if snakemake.wildcards.tx_sim == "test_sim":
     logger.info("Generating test counts")
     TX = [
         "ENST00000401850.5",
@@ -47,7 +47,7 @@ if snakemake.wildcards.sim == "test_sim":
     pd.DataFrame(counts).to_csv(snakemake.output.counts, sep="\t", index=False)
 
 ## UNIFORM COUNTS ##
-elif snakemake.wildcards.sim == "uniform_sim":
+elif snakemake.wildcards.tx_sim == "uniform_sim":
     logger.info("Generating uniform counts")
     counts = defaultdict(list)
     for tx in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
@@ -60,7 +60,7 @@ elif snakemake.wildcards.sim == "uniform_sim":
 
 
 ## GTEx COUNTS ##
-elif snakemake.wildcards.sim == "gtex_sim":
+elif snakemake.wildcards.tx_sim == "gtex_sim":
     logger.info("Generating GTEx counts")
 
     # take one sample from each tissue
