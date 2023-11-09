@@ -57,7 +57,9 @@ def get_final_output(wc):
         for sim in config["txomes"][txome]["simulations"]:
             wildcards = {"txome": txome, "sim": sim}  # manually set wildcards
             checkpt_output = checkpoints.simulate_reads.get(**wildcards).output[0]
-            samples = glob_wildcards(os.path.join(checkpt_output, "final")).sample
+            samples = glob_wildcards(
+                os.path.join(checkpt_output, "{sample}_1.fasta.gz")
+            ).sample
             for q in quantifiers:
                 for sample in samples:
                     final_output.extend(expand(q, sample=sample, txome=txome, sim=sim))
