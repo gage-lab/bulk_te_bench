@@ -12,25 +12,25 @@ def get_simulate_counts_input(wc):
     return out
 
 
-rule simulate_counts:
+rule simulate_tx_counts:
     input:
         unpack(get_simulate_counts_input),
     output:
-        counts="results/{txome}/{tx_sim}/true_counts.tsv",
+        tx_counts="results/{txome}/{tx_sim}/tx_counts.tsv",
     log:
         "results/{txome}/{tx_sim}/simulate_counts.log",
     conda:
         "simulate.yaml"
     script:
-        "simulate_counts.py"
+        "simulate_tx_counts.py"
 
 
 rule simulate_te_counts:
     input:
         unpack(get_simulate_counts_input),
-        counts=rules.simulate_counts.output.counts,
+        tx_counts=rules.simulate_tx_counts.output.tx_counts,
     output:
-        te_counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
+        counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
     log:
         "results/{txome}/{tx_sim}/{te_sim}/simulate_counts.log",
     conda:
@@ -42,7 +42,7 @@ rule simulate_te_counts:
 checkpoint simulate_reads:
     input:
         txome_fa=rules.make_txome.output.txome_fa,
-        counts=rules.simulate_te_counts.output.te_counts,
+        counts=rules.simulate_te_counts.output.counts,
     output:
         reads=directory("results/{txome}/{tx_sim}/{te_sim}/reads"),
     conda:

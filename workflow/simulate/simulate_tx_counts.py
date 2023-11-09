@@ -44,7 +44,7 @@ if snakemake.wildcards.tx_sim == "test_sim":
         for sample in range(0, 2):
             counts[sample].append(20 * len(tx.seq) // 100)
 
-    pd.DataFrame(counts).to_csv(snakemake.output.counts, sep="\t", index=False)
+    pd.DataFrame(counts).to_csv(snakemake.output.tx_counts, sep="\t", index=False)
 
 ## UNIFORM COUNTS ##
 elif snakemake.wildcards.tx_sim == "uniform_sim":
@@ -56,7 +56,7 @@ elif snakemake.wildcards.tx_sim == "uniform_sim":
         counts["tx_id"].append(tx.id)
         for sample in range(0, 7):
             counts[sample].append(20 * len(tx.seq) // 100)
-    pd.DataFrame(counts).to_csv(snakemake.output.counts, sep="\t", index=False)
+    pd.DataFrame(counts).to_csv(snakemake.output.tx_counts, sep="\t", index=False)
 
 
 ## GTEx COUNTS ##
@@ -137,7 +137,7 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
             np.random.shuffle(tx_counts)
             counts[sample].extend(tx_counts)
 
-    pd.DataFrame(counts).to_csv(snakemake.output.counts, sep="\t", index=False)
+    pd.DataFrame(counts).to_csv(snakemake.output.tx_counts, sep="\t", index=False)
 
 else:
     logger.error("Unknown simulation name!")
