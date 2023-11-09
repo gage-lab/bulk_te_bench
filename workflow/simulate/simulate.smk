@@ -28,7 +28,7 @@ rule simulate_counts:
 rule simulate_te_counts:
     input:
         unpack(get_simulate_counts_input),
-        rules.simulate_counts.output.counts,
+        counts=rules.simulate_counts.output.counts,
     output:
         te_counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
     log:
@@ -42,7 +42,7 @@ rule simulate_te_counts:
 checkpoint simulate_reads:
     input:
         txome_fa=rules.make_txome.output.txome_fa,
-        counts=rules.simulate_counts.output.counts,
+        counts=rules.simulate_te_counts.output.te_counts,
     output:
         reads=directory("results/{txome}/{tx_sim}/{te_sim}/reads"),
     conda:

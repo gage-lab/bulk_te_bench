@@ -49,11 +49,11 @@ for tx in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
     if tx.id in list(counts_mtx["tx_id"]):
         # Inverse equation to uniform/test sims
         row_values.append(
-            counts_mtx.loc[
-                counts_mtx["tx_id"] == tx.id,
-            ]
-            .values[0][1:]
-            .mean()
+            np.mean(
+                counts_mtx.loc[counts_mtx["tx_id"] == tx.id,].values[
+                    0
+                ][1:]
+            )
             * 100
             // len(tx.seq)
         )
@@ -100,6 +100,6 @@ if snakemake.wildcards.te_sim == "single_intergenic_l1hs":
 else:
     pass
 
-pd.concat([counts_mtx, pd.DataFrame(te_counts)], axis=0).write_csv(
+pd.concat([counts_mtx, pd.DataFrame(te_counts)], axis=0).to_csv(
     snakemake.output.te_counts, sep="\t", index=False
 )

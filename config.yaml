@@ -13,6 +13,8 @@ txomes:
       - "chr22"
     simulations:
       gtex_sim:
+        te_sim:
+          - "single_intergenic_l1hs"
         strand_specific: True
         readlen: 100
         gtex_counts: resources/GTEx/bulk-gex_v8_rna-seq_GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct.gz

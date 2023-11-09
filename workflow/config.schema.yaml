@@ -32,6 +32,10 @@ properties:
               "uniform_sim|gtex_sim|test_sim":
                 type: object
                 properties:
+                  te_sim:
+                    type: array
+                    items:
+                      type: string
                   readlen:
                     type: integer
                   strand_specific:
@@ -39,6 +43,7 @@ properties:
                   counts:
                     type: string
                 required:
+                  - te_sim
                   - strand_specific
                   - readlen
         required:
