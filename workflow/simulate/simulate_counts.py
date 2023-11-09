@@ -51,7 +51,7 @@ elif snakemake.wildcards.tx_sim == "uniform_sim":
     logger.info("Generating uniform counts")
     counts = defaultdict(list)
     for tx in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
-        if tx not in genes_gtf["transcript_id"].unique():
+        if tx.id not in genes_gtf.df["transcript_id"].unique():
             continue
         counts["tx_id"].append(tx.id)
         for sample in range(0, 7):
