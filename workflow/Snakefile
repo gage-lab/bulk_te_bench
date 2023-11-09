@@ -1,0 +1,71 @@
+from snakemake.utils import min_version, validate
+
+import pandas as pd
+from collections import defaultdict
+import os
+
+##### setup remote providers #####
+from snakemake.remote import FTP, HTTP
+
+FTP = FTP.RemoteProvider()
+HTTP = HTTP.RemoteProvider()
+
+
+def remote_or_local(path: str):
+    "Specify remote provider if path is a URL, otherwise return path"
+    if path.startswith("ftp"):
+        return FTP.remote(path, immediate_close=True)
+    elif path.startswith("http"):
+        return HTTP.remote(path)
+    elif os.path.exists(path):
+        return path
+    else:
+        raise ValueError(f"Could not find {path}")
+
+
+##### set minimum snakemake version #####
+min_version("7.32.0")
+
+
+##### read and validate config file #####
+configfile: "config.yaml"
+
+
+validate(config, "config.schema.yaml")
+
+
+include: "make_txome/make_txome.smk"
+include: "simulate/simulate.smk"
+include: "star/star.smk"
+include: "tetranscripts/tetranscripts.smk"
+include: "salmon/salmon.smk"
+include: "l1em/l1em.smk"
+
+
+##### setup output samples #####
+quantifiers = [
+    rules.tetranscripts.output,
+    rules.salmon_quant_reads.output,
+    rules.salmon_quant_bam.output,
+    rules.l1em.output,
+]
+
+
+def get_final_output(wc):
+    final_output = []
+    for txome in config["txomes"]:
+        for sim in config["txomes"][txome]["simulations"]:
+            wildcards = {"txome": txome, "sim": sim}  # manually set wildcards
+            checkpt_output = checkpoints.simulate_reads.get(**wildcards).output[0]
+            samples = glob_wildcards(
+                os.path.join(checkpt_output, "{sample}_1.fasta.gz")
+            ).sample
+            for q in quantifiers:
+                for sample in samples:
+                    final_output.extend(expand(q, sample=sample, txome=txome, sim=sim))
+    return final_output
+
+
+rule all:
+    input:
+        get_final_output,
