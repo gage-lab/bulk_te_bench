@@ -40,6 +40,7 @@ include: "star/star.smk"
 include: "tetranscripts/tetranscripts.smk"
 include: "salmon/salmon.smk"
 include: "l1em/l1em.smk"
+include: "analysis/analysis.smk"
 
 
 ##### setup output samples #####
@@ -65,6 +66,14 @@ def get_final_output(wc):
                 samples = glob_wildcards(
                     os.path.join(checkpt_output, "{sample}_1.fasta.gz")
                 ).sample
+                final_output.extend(
+                    expand(
+                        rules.analyze.output,
+                        txome=txome,
+                        tx_sim=tx_sim,
+                        te_sim=te_sim,
+                    )
+                )
                 for q in quantifiers:
                     for sample in samples:
                         final_output.extend(
