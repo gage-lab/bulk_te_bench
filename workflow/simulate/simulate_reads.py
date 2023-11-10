@@ -13,6 +13,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+import gzip
 import shutil
 from collections import defaultdict
 from math import ceil
@@ -23,8 +24,8 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from joblib import Parallel, delayed
 from rpy2 import robjects as ro
+from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
-from snakemake.shell import shell
 
 
 def polyester_producer(
@@ -36,20 +37,17 @@ def polyester_producer(
         this_counts = counts.iloc[i : i + chunk_size]
 
         # create a temporary fasta file with the transcripts in this chunk
-        this_txome = [tx for tx in txome if tx.id in this_counts.index]
-        assert (
-            len(this_txome) == this_counts.shape[0]
-        ), "Not all transcripts in counts were found in txome"
+        this_txome = []
+        for ctx in this_counts.index:
+            for ttx in txome:
+                if ttx.id == ctx:
+                    this_txome.append(ttx)
         SeqIO.write(this_txome, f"{outdir}/polyester_{i}.fa", "fasta")
 
         # convert counts to R matrix
-        counts_flat = []
-        for l in this_counts.transpose().to_numpy().tolist():
-            for j in l:
-                counts_flat.append(j)
-        counts_mat = ro.r.matrix(
-            counts_flat, nrow=this_counts.shape[0], ncol=this_counts.shape[1]
-        )
+        pandas2ri.activate()
+        counts_mat = pandas2ri.py2rpy(this_counts)
+        counts_mat = ro.r["as.matrix"](counts_mat)
 
         yield f"{outdir}/polyester_{i}.fa", counts_mat, f"{outdir}/polyester_{i}"
 
@@ -101,6 +99,29 @@ for outfile, infiles in samples.items():
         for infile in infiles:
             with open(infile, "rb") as infile:
                 outfile.write(infile.read())
+
+
+# check that the number of reads in the output is correct
+logger.info("Checking that the number of reads in the output is correct")
+read_counts = pd.DataFrame(0, index=counts.index, columns=counts.columns, dtype=float)
+for fagz in samples.keys():
+
+    # ignore read 2
+    if "_2.fasta.gz" in str(fagz):
+        continue
+
+    # get sample name
+    sample = str(int(fagz.name[7:9]) - 1)
+
+    # count reads from each tx
+    with gzip.open(fagz, "rt") as fa:
+        for read in SeqIO.parse(fa, "fasta"):
+            tx = read.id.split("/")[1].split(";")[0]
+            read_counts.loc[tx, sample] += 1
+
+if not read_counts.equals(counts):
+    logger.error("Simulated reads do not match simulate counts")
+    raise ValueError("Simulated reads do not match simulate counts")
 
 # clean up
 for f in Path(outdir).rglob("polyester_*.fa"):
