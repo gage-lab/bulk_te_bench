@@ -1,6 +1,6 @@
 rule get_l1em:
     output:
-        directory("resources/L1EM"),
+        directory("results/{txome}/L1EM"),
     shell:
         "git clone https://github.com/FenyoLab/L1EM {output}"
 
