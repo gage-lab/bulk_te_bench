@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 import numpy as np
 
 np.random.seed(1)
-from collections import defaultdict
 
 import pandas as pd
 import pyranges as pr
@@ -29,7 +28,7 @@ mean_counts = counts.mean(axis=1)
 tx_tpms = []
 logger.info("Iterating over fasta txs")
 for tx in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
-    if tx.id in list(counts.index):
+    if tx.id in counts.index:
         # Calculate tpm from counts
         tx_tpms.append(mean_counts[tx.id] * 100 // len(tx.seq))
 
@@ -39,7 +38,7 @@ mean_tx_tpm = np.mean(tx_tpms)
 genes_gtf = pr.read_gtf(snakemake.input.genes_gtf)
 rmsk_gtf = pr.read_gtf(snakemake.input.rmsk_gtf)
 
-# Find ones that are intergenic, by seeing if there are overlaps between location of loci in rmsk and gene gtf
+# Find TEs that are intergenic, by seeing if there are overlaps between location of loci in rmsk and gene gtf
 rmsk = rmsk_gtf.join(genes_gtf, how="left", report_overlap=True, suffix="_gene").df
 rmsk["Intronic"] = rmsk["Overlap"] == (rmsk["End"] - rmsk["Start"])
 rmsk["Intergenic"] = rmsk["Overlap"] < 0
@@ -58,7 +57,6 @@ contains_intergenic_intronic(rmsk)
 
 ## SIMULATION 1: single intergenic loci ##
 if snakemake.wildcards.te_sim == "single_intergenic_l1hs":
-    logger.info("Iterating over L1HS loci")
 
     # filter for l1hs
     rmsk = rmsk[rmsk["gene_id"] == "L1HS"]
@@ -68,6 +66,7 @@ if snakemake.wildcards.te_sim == "single_intergenic_l1hs":
     contains_intergenic_intronic(rmsk)
 
     # for each sample, randomly choose a l1hs intergenic locus to add counts to
+    logger.info("Simulating single intergenic l1hs locus expression for each sample")
     for sample in counts.columns:
         my_te = np.random.choice(rmsk[rmsk["Intergenic"]].transcript_id)
         for te in rmsk.itertuples():

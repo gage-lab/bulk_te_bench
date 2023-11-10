@@ -18,7 +18,7 @@ rule simulate_tx_counts:
     output:
         tx_counts="results/{txome}/{tx_sim}/tx_counts.tsv",
     log:
-        "results/{txome}/{tx_sim}/simulate_counts.log",
+        "results/{txome}/{tx_sim}/simulate_tx_counts.log",
     conda:
         "simulate.yaml"
     script:
@@ -32,7 +32,7 @@ rule simulate_te_counts:
     output:
         counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
     log:
-        "results/{txome}/{tx_sim}/{te_sim}/simulate_counts.log",
+        "results/{txome}/{tx_sim}/{te_sim}/simulate_te_counts.log",
     conda:
         "simulate.yaml"
     script:
@@ -47,7 +47,7 @@ checkpoint simulate_reads:
         reads=directory("results/{txome}/{tx_sim}/{te_sim}/reads"),
     conda:
         "simulate.yaml"
-    threads: 16
+    threads: 32
     params:
         strand_specific=lambda wc: config["txomes"][wc.txome]["simulations"][
             wc.tx_sim
