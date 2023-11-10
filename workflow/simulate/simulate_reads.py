@@ -27,6 +27,8 @@ from rpy2 import robjects as ro
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
 
+pandas2ri.activate()
+
 
 def polyester_producer(
     txome: list[SeqRecord], counts: pd.DataFrame, chunk_size: int, outdir: str
@@ -45,7 +47,6 @@ def polyester_producer(
         SeqIO.write(this_txome, f"{outdir}/polyester_{i}.fa", "fasta")
 
         # convert counts to R matrix
-        pandas2ri.activate()
         counts_mat = pandas2ri.py2rpy(this_counts)
         counts_mat = ro.r["as.matrix"](counts_mat)
 
