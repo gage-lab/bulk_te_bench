@@ -5,7 +5,7 @@ def get_sample():
 rule analyze:
     input:
         truth=rules.simulate_te_counts.output.counts,
-        new_counts=expand(rules.salmon_quant_reads.output.quant_tx, sample=get_sample()),
+        new_counts=rules.aggregate.output,
     output:
         "results/{txome}/{tx_sim}/{te_sim}/txome_analysis.ipynb",
     conda:

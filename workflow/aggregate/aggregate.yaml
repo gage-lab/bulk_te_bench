@@ -1,0 +1,11 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - seaborn
+  - pandas
+  - pyarrow
+  - biopython
+  - jupyter
+  - ipykernel
