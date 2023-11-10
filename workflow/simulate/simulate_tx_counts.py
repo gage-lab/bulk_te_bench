@@ -23,8 +23,8 @@ import pyranges as pr
 from Bio import SeqIO
 from scipy.stats import dirichlet
 
-genes_gtf = pr.read_gtf(snakemake.input.genes_gtf)
-rmsk_gtf = pr.read_gtf(snakemake.input.rmsk_gtf)
+genes_gtf = pr.read_gtf(snakemake.input.genes_gtf, as_df=True)
+rmsk_gtf = pr.read_gtf(snakemake.input.rmsk_gtf, as_df=True)
 
 ## TEST COUNTS ##
 if snakemake.wildcards.tx_sim == "test_sim":
@@ -51,7 +51,7 @@ elif snakemake.wildcards.tx_sim == "uniform_sim":
     logger.info("Generating uniform counts")
     counts = defaultdict(list)
     for tx in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
-        if tx.id not in genes_gtf.df["transcript_id"].unique():
+        if tx.id not in genes_gtf["transcript_id"].unique():
             continue
         counts["tx_id"].append(tx.id)
         for sample in range(0, 7):
@@ -67,7 +67,7 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
     gtex_counts = pd.read_csv(snakemake.input.gtex_counts, sep="\t", skiprows=2)
     logger.info(f"GTEx counts shape: {gtex_counts.shape}")
     samples = (
-        pd.read_csv(input.gtex_metadata, sep="\t", index_col=0)
+        pd.read_csv(snakemake.input.gtex_metadata, sep="\t", index_col=0)
         .loc[gtex_counts.columns[2:], "SMTS"]
         .sample(frac=1, random_state=1)
         .drop_duplicates()
@@ -76,12 +76,16 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
     logger.info(f"Grabbing 1 GTEx sample from each tissue: {samples} samples")
 
     # get shared genes in GTEx and our txome
+    shared_genes = list(set(gtex_counts["Name"]) & set(genes_gtf["gene_id"]))
+    genes_gtf = genes_gtf.loc[genes_gtf["gene_id"].isin(shared_genes)].query(
+        "Feature == 'transcript'"
+    )
+    shared_tx = genes_gtf["transcript_id"].unique()
     g2t = (
         genes_gtf.groupby("gene_id")
         .apply(lambda x: x["transcript_id"].tolist())
         .to_dict()
     )
-    shared_genes = set(gtex_counts["Name"]) & set(g2t.keys())
     logger.info(
         f"{len(shared_genes)}/{len(gtex_counts)} GTEx genes are shared with txome"
     )
@@ -93,9 +97,8 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
 
     # generate the transcript level counts from GTEx gene counts
     logger.info("Generating transcript level counts from GTEx gene counts")
-    counts = defaultdict(list)
+    counts = pd.DataFrame(index=shared_tx, columns=gtex_counts.columns)
     for gene in gtex_counts.index:
-        counts["tx_id"].extend(g2t[gene])
         ntx = len(g2t[gene])
         for sample in gtex_counts.columns:
             gene_counts = gtex_counts.loc[gene, sample]
@@ -135,9 +138,9 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
                 raise ValueError("ERROR: gene has no transcripts")
 
             np.random.shuffle(tx_counts)
-            counts[sample].extend(tx_counts)
+            counts.loc[g2t[gene], sample] = tx_counts
 
-    pd.DataFrame(counts).to_csv(snakemake.output.tx_counts, sep="\t", index=False)
+    pd.DataFrame(counts).to_csv(snakemake.output.tx_counts, sep="\t")
 
 else:
     logger.error("Unknown simulation name!")
