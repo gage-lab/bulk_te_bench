@@ -64,6 +64,7 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
     logger.info("Generating GTEx counts")
 
     # take one sample from each tissue
+    # takes ~5 min to read in the gtex counts
     gtex_counts = pd.read_csv(snakemake.input.gtex_counts, sep="\t", skiprows=2)
     logger.info(f"GTEx counts shape: {gtex_counts.shape}")
     samples = (
@@ -76,28 +77,29 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
     logger.info(f"Grabbing 1 GTEx sample from each tissue: {samples} samples")
 
     # get shared genes in GTEx and our txome
-    shared_genes = list(set(gtex_counts["Name"]) & set(genes_gtf["gene_id"]))
-    genes_gtf = genes_gtf.loc[genes_gtf["gene_id"].isin(shared_genes)].query(
-        "Feature == 'transcript'"
-    )
-    shared_tx = genes_gtf["transcript_id"].unique()
+    shared_genes = set(gtex_counts["Name"]) & set(genes_gtf["gene_id"])
+    all_tx = genes_gtf.query("Feature == 'transcript'")["transcript_id"].unique()
+    genes_gtf_only_genes = set(genes_gtf["gene_id"]) - set(gtex_counts["Name"])
+
     g2t = (
-        genes_gtf.groupby("gene_id")
+        genes_gtf.query("Feature == 'transcript'")
+        .groupby("gene_id")
         .apply(lambda x: x["transcript_id"].tolist())
         .to_dict()
     )
+
     logger.info(
         f"{len(shared_genes)}/{len(gtex_counts)} GTEx genes are shared with txome"
     )
     logger.info(f"{len(shared_genes)}/{len(g2t)} txome genes are shared with GTEx")
 
     # subset GTEx to shared genes and samples
-    gtex_counts = gtex_counts.set_index("Name").loc[shared_genes, samples]
+    gtex_counts = gtex_counts.set_index("Name").loc[list(shared_genes), samples]
     logger.info(f"GTEx counts shape after subsetting: {gtex_counts.shape}")
 
     # generate the transcript level counts from GTEx gene counts
     logger.info("Generating transcript level counts from GTEx gene counts")
-    counts = pd.DataFrame(index=shared_tx, columns=gtex_counts.columns)
+    counts = pd.DataFrame(index=all_tx, columns=gtex_counts.columns)
     for gene in gtex_counts.index:
         ntx = len(g2t[gene])
         for sample in gtex_counts.columns:
@@ -140,7 +142,11 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
             np.random.shuffle(tx_counts)
             counts.loc[g2t[gene], sample] = tx_counts
 
-    pd.DataFrame(counts).to_csv(snakemake.output.tx_counts, sep="\t")
+    # rename columns to numbers
+    counts.columns = [i for i in range(0, counts.shape[1])]
+
+    # for any genes that are in our txome but not in GTEx, set counts to 0
+    counts.fillna(0).to_csv(snakemake.output.tx_counts, sep="\t")
 
 else:
     logger.error("Unknown simulation name!")
