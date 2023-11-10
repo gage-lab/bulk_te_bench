@@ -31,6 +31,7 @@ rule simulate_te_counts:
         tx_counts=rules.simulate_tx_counts.output.tx_counts,
     output:
         counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
+        gene_counts="results/{txome}/{tx_sim}/{te_sim}/gene_counts.tsv",
     log:
         "results/{txome}/{tx_sim}/{te_sim}/simulate_te_counts.log",
     conda:

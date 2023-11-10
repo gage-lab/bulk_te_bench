@@ -143,7 +143,7 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
             counts.loc[g2t[gene], sample] = tx_counts
 
     # rename columns to numbers
-    counts.columns = [f"sample_{i:02d}" for i in range(2, counts.shape[1] + 1)]
+    counts.columns = [f"sample_{i:02d}" for i in range(1, counts.shape[1] + 1)]
 
     # for any genes that are in our txome but not in GTEx, set counts to 0
     counts.fillna(0).to_csv(snakemake.output.tx_counts, sep="\t")

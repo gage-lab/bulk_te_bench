@@ -38,6 +38,15 @@ mean_tx_tpm = np.mean(tx_tpms)
 genes_gtf = pr.read_gtf(snakemake.input.genes_gtf)
 rmsk_gtf = pr.read_gtf(snakemake.input.rmsk_gtf)
 
+
+def summarize_genes(tx_counts):
+    # add a gene id column
+    tx_counts = tx_counts.merge(
+        genes_gtf[["transcript_id", "gene_id"]], on="transcript_id"
+    )
+    return tx_counts.groupby("gene_id").sum()
+
+
 # Find TEs that are intergenic, by seeing if there are overlaps between location of loci in rmsk and gene gtf
 rmsk = rmsk_gtf.join(genes_gtf, how="left", report_overlap=True, suffix="_gene").df
 rmsk["Intronic"] = rmsk["Overlap"] == (rmsk["End"] - rmsk["Start"])
@@ -54,6 +63,7 @@ def contains_intergenic_intronic(df):
 
 
 contains_intergenic_intronic(rmsk)
+gene_counts = summarize_genes(counts)
 
 ## SIMULATION 1: single intergenic loci ##
 if snakemake.wildcards.te_sim == "single_intergenic_l1hs":
@@ -74,10 +84,17 @@ if snakemake.wildcards.te_sim == "single_intergenic_l1hs":
                 counts.loc[te.transcript_id, sample] = (
                     mean_tx_tpm * np.abs(te.End - te.Start) // 100
                 )
+                gene_counts.loc[te.transcript_id, sample] = (
+                    mean_tx_tpm * np.abs(te.End - te.Start) // 100
+                )
             else:
                 counts.loc[te.transcript_id, sample] = 0
+                gene_counts.loc[te.transcript_id, sample] = (
+                    mean_tx_tpm * np.abs(te.End - te.Start) // 100
+                )
 else:
     logger.error("The simulation type is not supported.")
     raise ValueError("The simulation type is not supported.")
 
 counts.to_csv(snakemake.output.counts, sep="\t")
+gene_counts.to_csv(snakemake.output.gene_counts, sep="\t")
