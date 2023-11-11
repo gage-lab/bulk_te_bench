@@ -105,7 +105,7 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
         for sample in gtex_counts.columns:
             gene_counts = gtex_counts.loc[gene, sample]
             if ntx == 1:
-                tx_counts = [gene_counts]
+                tx_counts = np.array([gene_counts])
             elif ntx == 2:
                 cointoss = np.random.randint(0, 2)  # 0 or 1
                 if cointoss == 0:
@@ -115,7 +115,7 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
                     )  # multiply this by counts
                 else:
                     # give to one isoform
-                    tx_counts = [gene_counts, 0]
+                    tx_counts = np.array([gene_counts, 0])
 
             elif ntx > 2:
                 # Gene counts either
@@ -135,12 +135,15 @@ elif snakemake.wildcards.tx_sim == "gtex_sim":
                 # if there is more than 3 transcripts, add zeros to the tx_counts
                 if len(tx_counts) != ntx:
                     tx_counts = np.pad(tx_counts, (0, (ntx - len(tx_counts))))
+                    if len(tx_counts) != ntx:
+                        logger.error("ERROR: tx_counts != ntx")
+                        raise ValueError("ERROR: tx_counts != ntx")
 
             else:
                 raise ValueError("ERROR: gene has no transcripts")
 
             np.random.shuffle(tx_counts)
-            counts.loc[g2t[gene], sample] = tx_counts
+            counts.loc[g2t[gene], sample] = tx_counts.astype(int)
 
     # rename columns to numbers
     counts.columns = [i for i in range(0, counts.shape[1])]
