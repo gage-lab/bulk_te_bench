@@ -22,17 +22,17 @@ Testing
 
 ```bash
 # Generate test data:
-cd .test/ngs-test-data
-snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
-cd ../..
+bash .test/generate_test_data.sh
 
-snakemake all -c1 --use-conda --directory .test --show-failed-logs --rerun-incomplete
+# test the pipeline
+snakemake all -c1 --use-conda --directory .test --show-failed-logs
 ```
 
 Running
 
 ```bash
-snakemake all -c16 --use-conda --show-failed-logs --rerun-incomplete
+# run the full pipeline
+snakemake all -c16 --use-conda --show-failed-logs
 ```
 
 Manually download to `./resources/GTEX`:

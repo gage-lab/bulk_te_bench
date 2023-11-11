@@ -41,8 +41,18 @@ jobs:
           channels: conda-forge,bioconda,nodefaults
           channel-priority: strict
       - name: Install Snakemake
-        run: mamba install snakemake biopython pandas
+        run: mamba install snakemake\>=7.32.0 biopython pandas
+      - name: Cache test data
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            .test/ngs-test-data/rnaseq
+            .test/ngs-test-data/scrnaseq_10x_v3
+            .test/ngs-test-data/longrnaseq
+          key: ${{ hashFiles('.test/generate_test_data.sh') }}
       - name: Generate test data
-        run: cd .test/ngs-test-data && snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: .test/generate_test_data.sh
       - name: Run pipeline
         run: snakemake all --use-conda --show-failed-logs -c2 --conda-cleanup-pkgs cache --directory .test
