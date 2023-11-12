@@ -90,3 +90,33 @@ rule salmon_quant_bam:
             -o $(dirname {output.quant_tx}) \
             {params.extra} > {log} 2>&1
         """
+
+
+rule salmon_quant_bam_ont:
+    input:
+        bam=rules.minimap2.output,
+        txome=rules.make_txome.output.txome_fa,
+        gtf=rules.make_txome.output.joint_gtf,
+    output:
+        quant_tx="results/{txome}/real_ont/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/quant.sf",
+        quant_ge="results/{txome}/real_ont/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/quant.genes.sf",
+    log:
+        "results/{txome}/real_ont/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/{sample}_{libtype}_rep{replicate}.log",
+    params:
+        libtype="A",
+        extra="",
+    threads: 2
+    conda:
+        "salmon.yaml"
+    shell:
+        """
+        salmon quant \
+            --threads {threads} \
+            --geneMap {input.gtf} \
+            --libType {params.libtype} \
+            --ont \
+            -t {input.txome} \
+            -a {input.bam} \
+            -o $(dirname {output.quant_tx}) \
+            {params.extra} > {log} 2>&1
+        """

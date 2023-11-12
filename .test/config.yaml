@@ -17,3 +17,5 @@ txomes:
           - "single_intergenic_l1hs"
         strand_specific: True
         readlen: 100
+    ont_samplesheet: ont_samplesheet.tsv
+    illumina_samplesheet: illumina_samplesheet.tsv

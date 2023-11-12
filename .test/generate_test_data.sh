@@ -13,6 +13,14 @@ then
 	exit
 fi
 
-snakemake rnaseq/ref/txome.chr22.gtf rnaseq/ref/genome.chr22.fa scrnaseq_10x_v3/ref/rmsk_chr22.out -c1 --use-conda
+snakemake \
+	rnaseq/ref/txome.chr22.gtf \
+	rnaseq/ref/genome.chr22.fa \
+	scrnaseq_10x_v3/ref/rmsk_chr22.out \
+	longrnaseq/ONT_directRNA/a.chr22.fq.gz \
+	longrnaseq/ONT_cDNA/a.chr22.fq.gz \
+	rnaseq/a.chr22.1.fq.gz \
+	rnaseq/a.chr22.1.fq.gz \
+	-c1 --use-conda
 
 cd -

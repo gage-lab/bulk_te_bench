@@ -42,6 +42,10 @@ for txome in config["txomes"]:
             tx_sims.add(tx_sim)
             te_sims.add(te_sim)
             sims.add(tx_sim + "/" + te_sim)
+    if "ont_samplesheet" in config["txomes"][txome]:
+        sims.add("real_ont")
+    if "illumina_samplesheet" in config["txomes"][txome]:
+        sims.add("real_illumina")
 
 
 wildcard_constraints:
@@ -49,29 +53,79 @@ wildcard_constraints:
     tx_sim="|".join(tx_sims),
     te_sim="|".join(te_sims),
     sim="|".join(sims),
+    quant="|".join(
+        [
+            "telocal",
+            "tecount",
+            "salmon_quant_reads_tx",
+            "salmon_quant_reads_ge",
+            "salmon_quant_bam_tx",
+            "salmon_quant_bam_ge",
+            "l1em",
+            "salmon_quant_bam_ont_tx",
+            "salmon_quant_bam_ont_ge",
+        ]
+    ),
 
 
 include: "make_txome/make_txome.smk"
 include: "simulate/simulate.smk"
 include: "star/star.smk"
+include: "minimap2/minimap2.smk"
 include: "tetranscripts/tetranscripts.smk"
 include: "salmon/salmon.smk"
 include: "l1em/l1em.smk"
+
+
+quantifiers = {
+    "telocal": rules.tetranscripts.output.telocal,
+    "tecount": rules.tetranscripts.output.tecount,
+    "salmon_quant_reads_tx": rules.salmon_quant_reads.output.quant_tx,
+    "salmon_quant_reads_ge": rules.salmon_quant_reads.output.quant_ge,
+    "salmon_quant_bam_tx": rules.salmon_quant_bam.output.quant_tx,
+    "salmon_quant_bam_ge": rules.salmon_quant_bam.output.quant_ge,
+    "l1em": rules.l1em.output.full_counts,
+}
+
+longread_quantifiers = {
+    "salmon_quant_bam_ont_tx": rules.salmon_quant_bam_ont.output.quant_tx,
+    "salmon_quant_bam_ont_ge": rules.salmon_quant_bam_ont.output.quant_ge,
+}
+
+
 include: "aggregate/aggregate.smk"
 
 
 def get_final_output(wc):
     final_output = []
     for txome in config["txomes"]:
+
+        # get quantification for simulated data
         for tx_sim in config["txomes"][txome]["simulations"]:
             for te_sim in config["txomes"][txome]["simulations"][tx_sim]["te_sim"]:
+                for q in quantifiers:
+                    final_output.extend(
+                        expand(
+                            rules.aggregate.output,
+                            txome=txome,
+                            sim=tx_sim + "/" + te_sim,
+                            quant=q,
+                        )
+                    )
+
+        # get quantification for real ONT data
+        if "ont_samplesheet" in config["txomes"][txome]:
+            print("found ont samplesheet")
+            for q in longread_quantifiers:
                 final_output.extend(
                     expand(
                         rules.aggregate.output,
                         txome=txome,
-                        sim=tx_sim + "/" + te_sim,
+                        sim="real_ont",
+                        quant=q,
                     )
                 )
+
     return final_output
 
 
