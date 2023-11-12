@@ -1,5 +1,6 @@
 def get_strandedness(wc):
-    if config["txomes"][wc.txome]["simulations"][wc.tx_sim]["strand_specific"]:
+    tx_sim = wc.sim.split("/")[0]
+    if config["txomes"][wc.txome]["simulations"][tx_sim]["strand_specific"]:
         return "forward"
     else:
         return "no"
