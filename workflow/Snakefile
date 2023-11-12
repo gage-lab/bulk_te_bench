@@ -33,6 +33,23 @@ configfile: "config.yaml"
 
 validate(config, "config.schema.yaml")
 
+# constrain wildcards according to config
+txomes, tx_sims, te_sims, sims = set(), set(), set(), set()
+for txome in config["txomes"]:
+    for tx_sim in config["txomes"][txome]["simulations"]:
+        for te_sim in config["txomes"][txome]["simulations"][tx_sim]["te_sim"]:
+            txomes.add(txome)
+            tx_sims.add(tx_sim)
+            te_sims.add(te_sim)
+            sims.add(tx_sim + "/" + te_sim)
+
+
+wildcard_constraints:
+    txome="|".join(txomes),
+    tx_sim="|".join(tx_sims),
+    te_sim="|".join(te_sims),
+    sim="|".join(sims),
+
 
 include: "make_txome/make_txome.smk"
 include: "simulate/simulate.smk"
@@ -52,8 +69,7 @@ def get_final_output(wc):
                     expand(
                         rules.aggregate.output,
                         txome=txome,
-                        tx_sim=tx_sim,
-                        te_sim=te_sim,
+                        sim=tx_sim + "/" + te_sim,
                     )
                 )
     return final_output

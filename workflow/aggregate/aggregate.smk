@@ -9,9 +9,16 @@ quantifiers = {
 }
 
 
+def get_tx_te_sim(sim):
+    tx_sim, te_sim = sim.split("/")
+    return {"tx_sim": tx_sim, "te_sim": te_sim}
+
+
 def get_estimates(wc):
     res = {}
-    checkpt_output = checkpoints.simulate_reads.get(**wc).output[0]
+    my_wc = get_tx_te_sim(wc.sim)
+    my_wc["txome"] = wc.txome
+    checkpt_output = checkpoints.simulate_reads.get(**my_wc).output[0]
     samples = glob_wildcards(os.path.join(checkpt_output, "{sample}_1.fasta.gz")).sample
     for n, q in quantifiers.items():
         res[n] = expand(q, sample=samples, allow_missing=True)
@@ -20,7 +27,7 @@ def get_estimates(wc):
 
 output = {}
 for q in quantifiers.keys():
-    output[q] = "results/{txome}/{tx_sim}/{te_sim}/" + q + "_counts.tsv"
+    output[q] = "results/{txome}/{sim}/" + q + "_counts.tsv"
 
 
 rule aggregate:
@@ -31,6 +38,6 @@ rule aggregate:
     conda:
         "aggregate.yaml"
     log:
-        "results/{txome}/{tx_sim}/{te_sim}/aggregate.log",
+        "results/{txome}/{sim}/aggregate.log",
     script:
         "aggregate.py"
