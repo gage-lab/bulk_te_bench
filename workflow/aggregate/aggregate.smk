@@ -10,6 +10,11 @@ def get_estimates(wc):
             replicate=ss["replicate"],
             allow_missing=True,
         )
+    elif wc.sim == "real_illumina":
+        ss = pd.read_csv(config["txomes"][wc.txome]["illumina_samplesheet"], sep="\t")
+        return expand(
+            shortread_quantifiers[wc.quant], sample=ss["sample"], allow_missing=True
+        )
     else:
         my_wc = {}
         my_wc["tx_sim"], my_wc["te_sim"] = wc.sim.split("/")
@@ -19,7 +24,9 @@ def get_estimates(wc):
             os.path.join(checkpt_output, "{sample}_1.fasta.gz")
         ).sample
 
-        return expand(quantifiers[wc.quant], sample=samples, allow_missing=True)
+        return expand(
+            shortread_quantifiers[wc.quant], sample=samples, allow_missing=True
+        )
 
 
 rule aggregate:

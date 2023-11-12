@@ -12,22 +12,14 @@ rule minimap2_index:
         "v2.11.1/bio/minimap2/index"
 
 
-def get_ont_fq(wc):
-    ss = pd.read_csv(config["txomes"][wc.txome]["ont_samplesheet"], sep="\t")
-    ss = ss[ss["sample"] == wc.sample]
-    ss = ss[ss["libtype"] == wc.libtype]
-    ss = ss[ss["replicate"] == int(wc.replicate)]
-    return ss["fq"].tolist()
-
-
 rule minimap2:
     input:
+        unpack(get_fq),
         target=rules.minimap2_index.output,  # can be either genome index or genome fasta
-        query=get_ont_fq,
     output:
-        "results/{txome}/real_ont/{sample}_{libtype}_rep{replicate}.bam",
+        "results/{txome}/{sim}/{sample}_{libtype}_rep{replicate}.bam",
     log:
-        "results/{txome}/real_ont/{sample}_{libtype}_rep{replicate}.log",
+        "results/{txome}/{sim}/{sample}_{libtype}_rep{replicate}.log",
     params:
         extra=lambda wc: "-ax map-ont -k14 -uf"
         if wc.libtype == "directRNA"
