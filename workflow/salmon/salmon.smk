@@ -41,11 +41,12 @@ rule salmon_quant_reads:
         quant_ge="results/{txome}/{sim}/salmon_quant_reads/{sample}/quant.genes.sf",
         lib="results/{txome}/{sim}/salmon_quant_reads/{sample}/lib_format_counts.json",
         meta_info="results/{txome}/{sim}/salmon_quant_reads/{sample}/aux_info/meta_info.json",
+        eq_classes="results/{txome}/{sim}/salmon_quant_reads/{sample}/aux_info/eq_classes.txt.gz",
     log:
         "results/{txome}/{sim}/salmon_quant_reads/{sample}/{sample}.log",
     params:
         libtype="A",
-        extra="",
+        extra="--gcBias --posBias --seqBias",
     threads: 2
     conda:
         "salmon.yaml"
@@ -55,6 +56,8 @@ rule salmon_quant_reads:
             --threads {threads} \
             --geneMap {input.gtf} \
             --libType {params.libtype} \
+            --dumpEq \
+            --numGibbsSamples 30 \
             -i $(dirname {input.index[0]}) \
             -1 {input.fq1} \
             -2 {input.fq2} \
@@ -72,11 +75,12 @@ rule salmon_quant_bam:
         quant_tx="results/{txome}/{sim}/salmon_quant_bam/{sample}/quant.sf",
         quant_ge="results/{txome}/{sim}/salmon_quant_bam/{sample}/quant.genes.sf",
         meta_info="results/{txome}/{sim}/salmon_quant_bam/{sample}/aux_info/meta_info.json",
+        eq_classes="results/{txome}/{sim}/salmon_quant_bam/{sample}/aux_info/eq_classes.txt.gz",
     log:
         "results/{txome}/{sim}/salmon_quant_bam/{sample}/{sample}.log",
     params:
         libtype="A",
-        extra="",
+        extra="--gcBias --posBias --seqBias",
     threads: 2
     conda:
         "salmon.yaml"
@@ -86,6 +90,8 @@ rule salmon_quant_bam:
             --threads {threads} \
             --geneMap {input.gtf} \
             --libType {params.libtype} \
+            --numGibbsSamples 30 \
+            --dumpEq \
             -t {input.txome} \
             -a {input.bam} \
             -o $(dirname {output.quant_tx}) \
@@ -102,11 +108,12 @@ rule salmon_quant_bam_ont:
         quant_tx="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/quant.sf",
         quant_ge="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/quant.genes.sf",
         meta_info="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/aux_info/meta_info.json",
+        eq_classes="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/aux_info/eq_classes.txt.gz",
     log:
         "results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/{sample}_{libtype}_rep{replicate}.log",
     params:
         libtype="A",
-        extra="",
+        extra="",  # cannot do bias correction with --ont
     threads: 2
     conda:
         "salmon.yaml"
@@ -116,6 +123,8 @@ rule salmon_quant_bam_ont:
             --threads {threads} \
             --geneMap {input.gtf} \
             --libType {params.libtype} \
+            --numGibbsSamples 30 \
+            --dumpEq \
             --ont \
             -t {input.txome} \
             -a {input.bam} \
