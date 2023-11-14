@@ -2,10 +2,10 @@ rule star_index:
     input:
         fasta=rules.make_txome.output.genome_fa,
     output:
-        star_index=directory("results/{txome}/star_index"),
+        star_index=directory("results/{txome}/resources/star_index"),
     threads: 8
     log:
-        "results/{txome}/star_index.log",
+        "results/{txome}/resources/star_index.log",
     wrapper:
         "v1.20.0/bio/star/index"
 

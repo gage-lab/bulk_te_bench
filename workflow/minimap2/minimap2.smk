@@ -2,9 +2,9 @@ rule minimap2_index:
     input:
         target=rules.make_txome.output.txome_fa,
     output:
-        "results/{txome}/minimap2_index/txome.mmi",
+        "results/{txome}/resources/minimap2_index/txome.mmi",
     log:
-        "results/{txome}/minimap2_index/index.log",
+        "results/{txome}/resources/minimap2_index/index.log",
     params:
         extra="",  # optional additional args
     threads: 3
