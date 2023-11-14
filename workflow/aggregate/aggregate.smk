@@ -16,13 +16,20 @@ def get_estimates(wc):
             shortread_quantifiers[wc.quant], sample=ss["sample"], allow_missing=True
         )
     else:
-        my_wc = {}
-        my_wc["tx_sim"], my_wc["te_sim"] = wc.sim.split("/")
-        my_wc["txome"] = wc.txome
-        checkpt_output = checkpoints.simulate_reads.get(**my_wc).output[0]
+        my_wc = {
+            "txome": wc.txome,
+            "sim": wc.sim,
+        }
+        checkpt_output = checkpoints.concat_txte_simulations.get(**my_wc).output.reads
         samples = glob_wildcards(
             os.path.join(checkpt_output, "{sample}_1.fasta.gz")
         ).sample
+
+        if len(samples) == 0:
+            print(
+                f"No samples found for {wc.txome} {wc.sim}: checkpt_output={checkpt_output}"
+            )
+            raise ValueError(f"No samples found for {wc.txome} {wc.sim}")
 
         return expand(
             shortread_quantifiers[wc.quant], sample=samples, allow_missing=True
