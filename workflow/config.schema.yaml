@@ -29,23 +29,26 @@ properties:
           simulations:
             type: object
             patternProperties:
-              "uniform_sim|gtex_sim|test_sim":
+              "^.*$":
                 type: object
                 properties:
-                  te_sim:
-                    type: array
-                    items:
-                      type: string
-                      patternProperties:
-                        "single_intergenic_l1hs"
-                  readlen:
-                    type: integer
+                  tx:
+                    type: string
+                    patternProperties:
+                      "uniform_sim|gtex_sim|test_sim":
+                  te:
+                    type: string
+                    patternProperties:
+                      "single_intergenic_l1hs":
                   strand_specific:
                     type: boolean
-                  counts:
-                    type: string
+                  readlen:
+                    type: integer
+                  paired:
+                    type: boolean
                 required:
-                  - te_sim
+                  - tx
+                  - te
                   - strand_specific
                   - readlen
         required:

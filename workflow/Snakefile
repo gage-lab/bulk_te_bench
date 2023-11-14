@@ -34,14 +34,15 @@ configfile: "config.yaml"
 validate(config, "config.schema.yaml")
 
 # constrain wildcards according to config
-txomes, tx_sims, te_sims, sims = set(), set(), set(), set()
+txomes, txte_sims, sims = set(), set(), set()
 for txome in config["txomes"]:
-    for tx_sim in config["txomes"][txome]["simulations"]:
-        for te_sim in config["txomes"][txome]["simulations"][tx_sim]["te_sim"]:
-            txomes.add(txome)
-            tx_sims.add(tx_sim)
-            te_sims.add(te_sim)
-            sims.add(tx_sim + "/" + te_sim)
+    txomes.add(txome)
+    for sim in config["txomes"][txome]["simulations"]:
+        tx_sim = config["txomes"][txome]["simulations"][sim]["tx"]
+        te_sim = config["txomes"][txome]["simulations"][sim]["te"]
+        txte_sims.add(tx_sim)
+        txte_sims.add(te_sim)
+        sims.add(sim)
     if "ont_samplesheet" in config["txomes"][txome]:
         sims.add("real_ont")
     if "illumina_samplesheet" in config["txomes"][txome]:
@@ -50,8 +51,7 @@ for txome in config["txomes"]:
 
 wildcard_constraints:
     txome="|".join(txomes),
-    tx_sim="|".join(tx_sims),
-    te_sim="|".join(te_sims),
+    txte_sim="|".join(txte_sims),
     sim="|".join(sims),
     quant="|".join(
         [
@@ -155,17 +155,16 @@ def get_final_output(wc):
                 )
 
         # get quantification for simulated Illumina short reads
-        for tx_sim in config["txomes"][txome]["simulations"]:
-            for te_sim in config["txomes"][txome]["simulations"][tx_sim]["te_sim"]:
-                for q in shortread_quantifiers:
-                    final_output.extend(
-                        expand(
-                            rules.aggregate.output,
-                            txome=txome,
-                            sim=tx_sim + "/" + te_sim,
-                            quant=q,
-                        )
+        for sim in config["txomes"][txome]["simulations"]:
+            for q in shortread_quantifiers:
+                final_output.extend(
+                    expand(
+                        rules.aggregate.output,
+                        txome=txome,
+                        sim=sim,
+                        quant=q,
                     )
+                )
 
     return final_output
 
