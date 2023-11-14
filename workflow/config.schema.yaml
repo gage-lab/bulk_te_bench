@@ -44,6 +44,8 @@ properties:
                     type: boolean
                   readlen:
                     type: integer
+                  nsamples:
+                    type: integer
                   paired:
                     type: boolean
                 required:
@@ -51,6 +53,7 @@ properties:
                   - te
                   - strand_specific
                   - readlen
+                  - nsamples
         required:
           - rmsk_query
           - chrs
