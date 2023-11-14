@@ -1,6 +1,6 @@
 rule get_l1em:
     output:
-        directory("results/{txome}/L1EM"),
+        directory("results/{txome}/resources/L1EM"),
     shell:
         "git clone https://github.com/FenyoLab/L1EM {output}"
 
@@ -9,9 +9,9 @@ rule bwa_index:
     input:
         rules.make_txome.output.genome_fa,
     output:
-        fa="results/{txome}/bwa_index/genome.fa",
+        fa="results/{txome}/resources/bwa_index/genome.fa",
         idx=multiext(
-            "results/{txome}/bwa_index/genome.fa",
+            "results/{txome}/resources/bwa_index/genome.fa",
             ".amb",
             ".ann",
             ".bwt",
@@ -19,7 +19,7 @@ rule bwa_index:
             ".sa",
         ),
     log:
-        "results/{txome}/bwa_index.log",
+        "results/{txome}/resources/bwa_index.log",
     params:
         algorithm="bwtsw",
     conda:
@@ -37,7 +37,7 @@ rule build_l1em_ref:
         index=rules.bwa_index.output.idx,
         l1em=rules.get_l1em.output,
     output:
-        "results/{txome}/build_l1em_ref.log",
+        "results/{txome}/resources/build_l1em_ref.log",
     conda:
         "l1em.yaml"
     shell:

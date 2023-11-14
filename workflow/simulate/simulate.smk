@@ -20,9 +20,9 @@ rule simulate_counts:
     input:
         unpack(get_simulate_counts_input),
     output:
-        counts="results/{txome}/{txte_sim}/simulated_counts_{nsamples}samples.tsv",
+        counts="results/{txome}/txte_simulations/{txte_sim}/simulated_counts_{nsamples}samples.tsv",
     log:
-        "results/{txome}/{txte_sim}/simulated_counts_{nsamples}samples.log",
+        "results/{txome}/txte_simulations/{txte_sim}/simulated_counts_{nsamples}samples.log",
     conda:
         "simulate.yaml"
     params:
@@ -37,10 +37,10 @@ rule simulate_reads:
         counts=rules.simulate_counts.output.counts,
     output:
         reads=directory(
-            "results/{txome}/{txte_sim}/simulated_reads_{nsamples}samples_{readlen}bp_{strand}"
+            "results/{txome}/txte_simulations/{txte_sim}/simulated_reads_{nsamples}samples_{readlen}bp_{strand}"
         ),
     log:
-        "results/{txome}/{txte_sim}/simulated_reads_{nsamples}samples_{readlen}bp_{strand}.log",
+        "results/{txome}/txte_simulations/{txte_sim}/simulated_reads_{nsamples}samples_{readlen}bp_{strand}.log",
     conda:
         "simulate.yaml"
     threads: 32

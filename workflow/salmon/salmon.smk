@@ -3,7 +3,7 @@ rule salmon_index:
         rules.make_txome.output.txome_fa,
     output:
         multiext(
-            "results/{txome}/salmon_index/",
+            "results/{txome}/resources/salmon_index/",
             "complete_ref_lens.bin",
             "ctable.bin",
             "ctg_offsets.bin",
@@ -21,7 +21,7 @@ rule salmon_index:
             "versionInfo.json",
         ),
     log:
-        "results/{txome}/salmon_index.log",
+        "results/{txome}/resources/salmon_index.log",
     threads: 2
     params:
         k=31,
