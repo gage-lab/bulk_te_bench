@@ -27,6 +27,8 @@ from rpy2 import robjects as ro
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
 
+pandas2ri.activate()
+
 
 def polyester_producer(
     txome: list[SeqRecord], counts: pd.DataFrame, chunk_size: int, outdir: str
@@ -45,7 +47,6 @@ def polyester_producer(
         SeqIO.write(this_txome, f"{outdir}/polyester_{i}.fa", "fasta")
 
         # convert counts to R matrix
-        pandas2ri.activate()
         counts_mat = pandas2ri.py2rpy(this_counts)
         counts_mat = ro.r["as.matrix"](counts_mat)
 
@@ -53,7 +54,7 @@ def polyester_producer(
 
 
 outdir = Path(snakemake.output[0])
-counts = pd.read_csv(snakemake.input.counts, sep="\t", index_col=0)
+counts = pd.read_csv(snakemake.input.counts, sep="\t", index_col=0).astype(float)
 
 n_transcripts, n_samples = counts.shape
 logger.info(
@@ -69,7 +70,11 @@ txome = [
 Path(snakemake.output.reads).mkdir(parents=True, exist_ok=True)
 chunk_size = ceil(counts.shape[0] / snakemake.threads)
 polyester = importr("polyester")
-Parallel(n_jobs=snakemake.threads, backend="multiprocessing", verbose=10)(
+Parallel(
+    n_jobs=min(snakemake.threads, counts.shape[0]),
+    backend="multiprocessing",
+    verbose=10,
+)(
     delayed(polyester.simulate_experiment_countmat)(
         fasta=fa,
         readmat=cmat,
@@ -78,8 +83,8 @@ Parallel(n_jobs=snakemake.threads, backend="multiprocessing", verbose=10)(
         error_model="illumina5",
         gzip=True,
         seed=12,
-        readlen=snakemake.params.readlen,
-        strand_specific=snakemake.params.strand_specific,
+        readlen=int(snakemake.params.readlen),
+        strand_specific=bool(snakemake.params.strand_specific),
     )
     for fa, cmat, odir in polyester_producer(
         txome, counts, chunk_size, snakemake.output.reads

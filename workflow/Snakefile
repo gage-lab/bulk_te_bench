@@ -33,29 +33,139 @@ configfile: "config.yaml"
 
 validate(config, "config.schema.yaml")
 
+# constrain wildcards according to config
+txomes, txte_sims, sims = set(), set(), set()
+for txome in config["txomes"]:
+    txomes.add(txome)
+    for sim in config["txomes"][txome]["simulations"]:
+        tx_sim = config["txomes"][txome]["simulations"][sim]["tx"]
+        te_sim = config["txomes"][txome]["simulations"][sim]["te"]
+        txte_sims.add(tx_sim)
+        txte_sims.add(te_sim)
+        sims.add(sim)
+    if "ont_samplesheet" in config["txomes"][txome]:
+        sims.add("real_ont")
+    if "illumina_samplesheet" in config["txomes"][txome]:
+        sims.add("real_illumina")
+
+
+wildcard_constraints:
+    txome="|".join(txomes),
+    txte_sim="|".join(txte_sims),
+    sim="|".join(sims),
+    quant="|".join(
+        [
+            "telocal",
+            "tecount",
+            "salmon_quant_reads_tx",
+            "salmon_quant_reads_ge",
+            "salmon_quant_bam_tx",
+            "salmon_quant_bam_ge",
+            "l1em",
+            "salmon_quant_bam_ont_tx",
+            "salmon_quant_bam_ont_ge",
+        ]
+    ),
+
 
 include: "make_txome/make_txome.smk"
 include: "simulate/simulate.smk"
+
+
+def get_fq(wc):
+    """
+    Return the reads for a given sample.
+    For short reads only
+    """
+    if wc.sim == "real_ont":  # get real ONT long reads for minimap2
+        ss = pd.read_csv(config["txomes"][wc.txome]["ont_samplesheet"], sep="\t")
+        ss = ss[ss["sample"] == wc.sample]
+        ss = ss[ss["libtype"] == wc.libtype]
+        ss = ss[ss["replicate"] == int(wc.replicate)]
+        assert not ss.empty, f"Could not find sample {wc.sample} in samplesheet"
+        return {"query": ss["fq"].tolist()}
+    elif wc.sim == "real_illumina":  # get real Illumina short reads for star and salmon
+        ss = pd.read_csv(config["txomes"][wc.txome]["illumina_samplesheet"], sep="\t")
+        ss = ss[ss["sample"] == wc.sample]
+        assert not ss.empty, f"Could not find sample {wc.sample} in samplesheet"
+        return {
+            "fq1": ss["fq1"].tolist(),
+            "fq2": ss["fq2"].tolist(),
+        }
+    else:  # get simulated Illumina short reads for star and salmon
+        return {
+            "fq1": "results/{txome}/{sim}/reads/{sample}_1.fasta.gz",
+            "fq2": "results/{txome}/{sim}/reads/{sample}_2.fasta.gz",
+        }
+
+
 include: "star/star.smk"
-include: "tetranscripts/tetranscripts.smk"
+include: "minimap2/minimap2.smk"
 include: "salmon/salmon.smk"
+include: "tetranscripts/tetranscripts.smk"
 include: "l1em/l1em.smk"
+
+
+shortread_quantifiers = {
+    "telocal": rules.tetranscripts.output.telocal,
+    "tecount": rules.tetranscripts.output.tecount,
+    "salmon_quant_reads_tx": rules.salmon_quant_reads.output.quant_tx,
+    "salmon_quant_reads_ge": rules.salmon_quant_reads.output.quant_ge,
+    "salmon_quant_bam_tx": rules.salmon_quant_bam.output.quant_tx,
+    "salmon_quant_bam_ge": rules.salmon_quant_bam.output.quant_ge,
+    "l1em": rules.l1em.output.full_counts,
+}
+
+longread_quantifiers = {
+    "salmon_quant_bam_ont_tx": rules.salmon_quant_bam_ont.output.quant_tx,
+    "salmon_quant_bam_ont_ge": rules.salmon_quant_bam_ont.output.quant_ge,
+}
+
+
 include: "aggregate/aggregate.smk"
 
 
 def get_final_output(wc):
     final_output = []
     for txome in config["txomes"]:
-        for tx_sim in config["txomes"][txome]["simulations"]:
-            for te_sim in config["txomes"][txome]["simulations"][tx_sim]["te_sim"]:
+        # get quantification for real ONT long reads
+        if "ont_samplesheet" in config["txomes"][txome]:
+            print(f"found ont samplesheet for {txome}")
+            for q in longread_quantifiers:
                 final_output.extend(
                     expand(
                         rules.aggregate.output,
                         txome=txome,
-                        tx_sim=tx_sim,
-                        te_sim=te_sim,
+                        sim="real_ont",
+                        quant=q,
                     )
                 )
+
+        # get quantification for real Illumina short reads
+        if "illumina_samplesheet" in config["txomes"][txome]:
+            print(f"found illumina samplesheet for {txome}")
+            for q in shortread_quantifiers:
+                final_output.extend(
+                    expand(
+                        rules.aggregate.output,
+                        txome=txome,
+                        sim="real_illumina",
+                        quant=q,
+                    )
+                )
+
+        # get quantification for simulated Illumina short reads
+        for sim in config["txomes"][txome]["simulations"]:
+            for q in shortread_quantifiers:
+                final_output.extend(
+                    expand(
+                        rules.aggregate.output,
+                        txome=txome,
+                        sim=sim,
+                        quant=q,
+                    )
+                )
+
     return final_output
 
 

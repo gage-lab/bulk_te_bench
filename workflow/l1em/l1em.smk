@@ -1,6 +1,6 @@
 rule get_l1em:
     output:
-        directory("results/{txome}/L1EM"),
+        directory("results/{txome}/resources/L1EM"),
     shell:
         "git clone https://github.com/FenyoLab/L1EM {output}"
 
@@ -9,9 +9,9 @@ rule bwa_index:
     input:
         rules.make_txome.output.genome_fa,
     output:
-        fa="results/{txome}/bwa_index/genome.fa",
+        fa="results/{txome}/resources/bwa_index/genome.fa",
         idx=multiext(
-            "results/{txome}/bwa_index/genome.fa",
+            "results/{txome}/resources/bwa_index/genome.fa",
             ".amb",
             ".ann",
             ".bwt",
@@ -19,7 +19,7 @@ rule bwa_index:
             ".sa",
         ),
     log:
-        "results/{txome}/bwa_index.log",
+        "results/{txome}/resources/bwa_index.log",
     params:
         algorithm="bwtsw",
     conda:
@@ -37,7 +37,7 @@ rule build_l1em_ref:
         index=rules.bwa_index.output.idx,
         l1em=rules.get_l1em.output,
     output:
-        "results/{txome}/build_l1em_ref.log",
+        "results/{txome}/resources/build_l1em_ref.log",
     conda:
         "l1em.yaml"
     shell:
@@ -59,13 +59,13 @@ rule l1em:
         index=rules.bwa_index.output.idx,
         l1em_ref=rules.build_l1em_ref.output,
     output:
-        full_counts="results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/full_counts.txt",
-        l1hs_counts="results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/l1hs_transcript_counts.txt",
-        filter_fpm="results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/filter_L1HS_FPM.txt",
+        full_counts="results/{txome}/{sim}/l1em/{sample}/full_counts.txt",
+        l1hs_counts="results/{txome}/{sim}/l1em/{sample}/l1hs_transcript_counts.txt",
+        filter_fpm="results/{txome}/{sim}/l1em/{sample}/filter_L1HS_FPM.txt",
     conda:
         "l1em.yaml"
     log:
-        "results/{txome}/{tx_sim}/{te_sim}/l1em/{sample}/l1em.log",
+        "results/{txome}/{sim}/l1em/{sample}/l1em.log",
     threads: 16
     shell:
         """

@@ -43,6 +43,8 @@ def read_l1em(f):
 read_fx = {
     "telocal": read_tetranscripts,
     "tecount": read_tetranscripts,
+    "salmon_quant_bam_ont_tx": read_salmon_quant,
+    "salmon_quant_bam_ont_ge": read_salmon_quant,
     "salmon_quant_reads_tx": read_salmon_quant,
     "salmon_quant_reads_ge": read_salmon_quant,
     "salmon_quant_bam_tx": read_salmon_quant,
@@ -50,25 +52,21 @@ read_fx = {
     "l1em": read_l1em,
 }
 
-# read in the files
-
-res = {}
-
 # get the samples
-q = list(snakemake.input.keys())[0]
-samples = [Path(f).parent.name for f in snakemake.input[q]]
+samples = [Path(f).parent.name for f in snakemake.input]
 
-for q in snakemake.input.keys():
-    logger.info(f"Aggregating {q} files")
+logger.info(f"Aggregating {snakemake.wildcards.quant} files")
 
-    # initialize dataframe
-    out = read_fx[q](snakemake.input[q][0])
-    res = pd.DataFrame(columns=samples, index=out.index)
+# initialize dataframe
+out = read_fx[snakemake.wildcards.quant](snakemake.input[0])
+res = pd.DataFrame(columns=samples, index=out.index)
 
-    # get sample counts
-    for f in snakemake.input[q]:
-        sample = Path(f).parent.name
-        res.loc[out.index, sample] = read_fx[q](f).loc[out.index, "counts"]
+# get sample counts
+for f in snakemake.input:
+    sample = Path(f).parent.name
+    res.loc[out.index, sample] = read_fx[snakemake.wildcards.quant](f).loc[
+        out.index, "counts"
+    ]
 
-    # write out the files
-    res.to_csv(snakemake.output[q], sep="\t", index=True, header=True)
+# write out the files
+res.to_csv(snakemake.output[0], sep="\t", index=True, header=True)

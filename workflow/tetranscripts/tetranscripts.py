@@ -13,14 +13,26 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+import json
 import pickle
 import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-import pyranges as pr
 from snakemake.shell import shell
 from TElocal_Toolkit.TEindex import TEfeatures
+
+with open(snakemake.input.meta_info, "r") as f:
+    meta_info = json.load(f)
+
+if "F" in meta_info["library_types"][0]:
+    strandedness = "forward"
+elif "R" in meta_info["library_types"][0]:
+    strandedness = "reverse"
+elif "U" in meta_info["library_types"][0]:
+    strandedness = "no"
+else:
+    ValueError("No strandedness information found in meta_info.json")
 
 with NamedTemporaryFile(suffix=".locInd") as tmp_loc:
     # run TEcount
@@ -36,7 +48,7 @@ with NamedTemporaryFile(suffix=".locInd") as tmp_loc:
         "--BAM {snakemake.input.bam} "
         "--GTF {snakemake.input.genes_gtf} "
         "--TE {snakemake.input.rmsk_gtf} "
-        "--stranded {snakemake.params.strandedness} "
+        "--stranded {strandedness} "
         "--mode {snakemake.params.mode} "
         "--project {stem} "
         "--sortByPos "
@@ -62,7 +74,7 @@ with NamedTemporaryFile(suffix=".locInd") as tmp_loc:
         "--BAM {snakemake.input.bam} "
         "--GTF {snakemake.input.genes_gtf} "
         "--TE {tmp_loc.name} "
-        "--stranded {snakemake.params.strandedness} "
+        "--stranded {strandedness} "
         "--mode {snakemake.params.mode} "
         "--project {stem} "
         "--sortByPos "
