@@ -8,7 +8,8 @@ gencode_gtf: ngs-test-data/rnaseq/ref/txome.chr22.gtf
 # list of transcriptomes generate and simulate reads from
 txomes:
   test_txome:
-    rmsk_query: "repName == 'L1HS' & length > 6000"
+    rmsk_query:
+      - "L1HS"
     chrs:
       - "chr22"
     simulations:

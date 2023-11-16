@@ -21,7 +21,7 @@ properties:
         type: object
         properties:
           rmsk_query:
-            type: string
+            type: array
           chrs:
             type: array
             items:

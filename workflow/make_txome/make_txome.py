@@ -40,12 +40,14 @@ shell(
 )
 
 ### parse and filter rmsk ###
-rmsk_query = snakemake.params.rmsk_query
+rmsk_query = snakemake.params.rmsk_query  # this is a list of subfams
 logger.info(f"Parsing rmsk, filtering for {rmsk_query} from chromosome(s) {my_chrs}")
 rmsk = (
     read_rmsk(snakemake.input.rmsk_out)
     .query("genoName in @chrs")
-    .query(rmsk_query)
+    .query("repName in @rmsk_query")
+    .query("has_promoter")
+    .query("is_full_length")
     .reset_index()
 )
 

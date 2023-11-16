@@ -31,22 +31,7 @@ rule simulate_counts:
         "simulate_counts.py"
 
 
-rule simulate_te_counts:
-    input:
-        unpack(get_simulate_counts_input),
-        tx_counts=rules.simulate_tx_counts.output.tx_counts,
-    output:
-        counts="results/{txome}/{tx_sim}/{te_sim}/true_counts.tsv",
-        gene_counts="results/{txome}/{tx_sim}/{te_sim}/gene_counts.tsv",
-    log:
-        "results/{txome}/{tx_sim}/{te_sim}/simulate_te_counts.log",
-    conda:
-        "simulate.yaml"
-    script:
-        "simulate_te_counts.py"
-
-
-checkpoint simulate_reads:
+rule simulate_reads:
     input:
         txome_fa=rules.make_txome.output.txome_fa,
         counts=rules.simulate_counts.output.counts,
@@ -112,8 +97,10 @@ def get_sims(wc):
 checkpoint concat_txte_simulations:
     input:
         unpack(get_sims),
+        genes_gtf=rules.make_txome.output.genes_gtf,
     output:
         counts="results/{txome}/{sim}/simulated_counts.tsv",
+        gene_counts="results/{txome}/{sim}/simulated_gene_counts.tsv",
         reads=directory("results/{txome}/{sim}/reads"),
     log:
         "results/{txome}/{sim}/concat_txte_simulations.log",
