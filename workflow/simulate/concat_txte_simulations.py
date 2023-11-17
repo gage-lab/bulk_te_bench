@@ -37,8 +37,10 @@ def summarize_genes(tx_counts):
     # add a gene id column
     genes_df = genes_gtf.df
     genes_df.rename(columns={"transcript_id": "tx_id"}, inplace=True)
-    tx_counts = tx_counts.merge(genes_df[["tx_id", "gene_id"]], on="tx_id")
-    return tx_counts.groupby("gene_id").sum()
+    tx_counts = tx_counts.merge(
+        genes_df[["tx_id", "gene_id"]], on="tx_id"
+    ).drop_duplicates()
+    return tx_counts.groupby("gene_id").sum().drop(columns=["tx_id"])
 
 
 # TODO: check this
