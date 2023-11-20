@@ -40,12 +40,17 @@ shell(
 )
 
 ### parse and filter rmsk ###
-rmsk_query = snakemake.params.rmsk_query  # this is a list of subfams
-logger.info(f"Parsing rmsk, filtering for {rmsk_query} from chromosome(s) {my_chrs}")
+te_subfamilies = snakemake.params.te_subfamilies  # this is a list of subfams
+my_tes = " ".join(te_subfamilies)
+if len(te_subfamilies) == 0:
+    my_tes = "no TEs"
+
+
+logger.info(f"Parsing rmsk, filtering for {my_tes} from chromosome(s) {my_chrs}")
 rmsk = (
     read_rmsk(snakemake.input.rmsk_out)
     .query("genoName in @chrs")
-    .query("repName in @rmsk_query")
+    .query("repName in @te_subfamilies")
     .query("has_promoter")
     .query("is_full_length")
     .reset_index()

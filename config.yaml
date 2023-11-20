@@ -8,7 +8,8 @@ gencode_gtf: "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26
 # list of transcriptomes generate and simulate reads from
 txomes:
   chr22_l1hs_txome:
-    rmsk_query: "repName == 'L1HS' & length > 6000"
+    te_subfamilies:
+      - "L1HS"
     chrs:
       - "chr22"
     simulations:
