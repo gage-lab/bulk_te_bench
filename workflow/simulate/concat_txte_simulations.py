@@ -30,7 +30,7 @@ logger.info("Concatenating count matrices")
 genes_gtf = pr.read_gtf(snakemake.input.genes_gtf)
 te_counts = pd.read_csv(snakemake.input.te_counts[0], sep="\t", index_col=0)
 tx_counts = pd.read_csv(snakemake.input.tx_counts[0], sep="\t", index_col=0)
-pd.concat([te_counts, tx_counts], axis=0).to_csv(snakemake.output.counts, sep="\t")
+pd.concat([te_counts, tx_counts], axis=0).to_csv(snakemake.output.tx_counts, sep="\t")
 
 
 def summarize_genes(tx_counts):

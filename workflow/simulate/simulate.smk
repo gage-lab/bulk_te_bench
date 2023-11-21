@@ -99,7 +99,7 @@ checkpoint concat_txte_simulations:
         unpack(get_sims),
         genes_gtf=rules.make_txome.output.genes_gtf,
     output:
-        counts="results/{txome}/{sim}/simulated_counts.tsv",
+        tx_counts="results/{txome}/{sim}/simulated_tx_counts.tsv",
         gene_counts="results/{txome}/{sim}/simulated_gene_counts.tsv",
         reads=directory("results/{txome}/{sim}/reads"),
     log:
