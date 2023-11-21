@@ -8,12 +8,12 @@
 ```bash
 .
 ├── README.md
-├── conda.yaml # conda environment specification
+├── .github/ # github actions for automated formatting and testing
+├── .test/ # snakemake pipeline testing
 ├── analysis/ # analysis of pipeline outputs
 ├── workflow/ # snakemake pipeline for benchmarking
-├── config.yaml # snakemake pipeline configuration
-├── src/ # local python package
-└── setup.py # install local python package
+├── conda.yaml # conda environment post-hoc analysis
+└── config.yaml # snakemake pipeline configuration
 ```
 
 ## The pipeline
