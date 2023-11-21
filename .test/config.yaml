@@ -8,8 +8,6 @@ gencode_gtf: ngs-test-data/rnaseq/ref/txome.chr22.gtf
 # list of transcriptomes generate and simulate reads from
 txomes:
   test_txome:
-    te_subfamilies:
-      - "L1HS"
     chrs:
       - "chr22"
     simulations:
