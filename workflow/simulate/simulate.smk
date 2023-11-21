@@ -97,7 +97,7 @@ def get_sims(wc):
 checkpoint concat_txte_simulations:
     input:
         unpack(get_sims),
-        genes_gtf=rules.make_txome.output.genes_gtf,
+        gtf=rules.make_txome.output.joint_gtf,
     output:
         tx_counts="results/{txome}/{sim}/simulated_tx_counts.tsv",
         gene_counts="results/{txome}/{sim}/simulated_gene_counts.tsv",
