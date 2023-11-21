@@ -20,8 +20,8 @@ properties:
       "^.*txome$":
         type: object
         properties:
-          rmsk_query:
-            type: string
+          te_subfamilies:
+            type: array
           chrs:
             type: array
             items:
@@ -55,7 +55,6 @@ properties:
                   - readlen
                   - nsamples
         required:
-          - rmsk_query
           - chrs
           - simulations
 

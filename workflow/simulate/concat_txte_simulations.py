@@ -23,12 +23,25 @@ random.seed(1)
 from itertools import chain
 
 import pandas as pd
+import pyranges as pr
 
 # concat count matrices
 logger.info("Concatenating count matrices")
+t2g = (
+    pr.read_gtf(snakemake.input.gtf, as_df=True)
+    .query("Feature == 'transcript'")
+    .rename(columns={"transcript_id": "tx_id"})
+    .set_index("tx_id")["gene_id"]
+    .to_dict()
+)
 te_counts = pd.read_csv(snakemake.input.te_counts[0], sep="\t", index_col=0)
 tx_counts = pd.read_csv(snakemake.input.tx_counts[0], sep="\t", index_col=0)
-pd.concat([te_counts, tx_counts], axis=0).to_csv(snakemake.output.counts, sep="\t")
+counts = pd.concat([te_counts, tx_counts], axis=0)
+counts.to_csv(snakemake.output.tx_counts, sep="\t")
+
+# add a gene id column
+counts["gene_id"] = counts.index.map(t2g)
+counts.groupby("gene_id").sum().to_csv(snakemake.output.gene_counts, sep="\t")
 
 # concat reads
 logger.info("Concatenating tx and te reads")

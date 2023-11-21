@@ -157,7 +157,7 @@ elif snakemake.wildcards.txte_sim == "gtex_sim":
             counts.loc[g2t[gene], sample] = tx_counts.astype(int)
 
     # rename columns to numbers
-    counts.columns = [i for i in range(0, counts.shape[1])]
+    counts.columns = [f"sample_{i:02d}" for i in range(1, counts.shape[1] + 1)]
     # only keep desired number of samples
     counts = counts.iloc[:, 0 : int(snakemake.params.nsamples)].reset_index()
 
