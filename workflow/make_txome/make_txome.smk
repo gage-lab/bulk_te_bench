@@ -15,7 +15,7 @@ rule make_txome:
         "results/{txome}/make_txome.log",
     params:
         te_subfamilies=lambda wc: config["txomes"][wc.txome].get("te_subfamilies", []),
-        chrs=lambda wc: config["txomes"][wc.txome]["chrs"],
+        chrs=lambda wc: config["txomes"][wc.txome].get("chrs", []),
     script:
         "make_txome.py"
 

@@ -18,11 +18,6 @@ import pyranges as pr
 from myutils.rmsk import read_rmsk
 from snakemake.shell import shell
 
-# check if snakemake.params.chrom is a list
-chrs = snakemake.params.chrs
-if not isinstance(chrs, list):
-    raise ValueError(chrs + " must be a list, fix config.yaml")
-
 # unzip gtf and genome if necessary
 for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:
     if ".gz" in f:
@@ -31,12 +26,17 @@ for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:
 snakemake.input.genome_fa = snakemake.input.genome_fa.replace(".gz", "")
 snakemake.input.gencode_gtf = snakemake.input.gencode_gtf.replace(".gz", "")
 
-# subset genome
+# index and subset genome
+chrs = snakemake.params.chrs
 my_chrs = " ".join(chrs)
 shell("samtools faidx {snakemake.input.genome_fa}")
-shell(
-    "samtools faidx {snakemake.input.genome_fa} {my_chrs} > {snakemake.output.genome_fa}"
-)
+if len(chrs) > 0:
+    shell(
+        "samtools faidx {snakemake.input.genome_fa} {my_chrs} > {snakemake.output.genome_fa}"
+    )
+else:
+    shell("cp {snakemake.input.genome_fa} {snakemake.output.genome_fa}")
+shell("samtools faidx {snakemake.output.genome_fa}")
 
 ### parse and filter rmsk ###
 te_subfamilies = snakemake.params.te_subfamilies  # this is a list of subfams
@@ -235,7 +235,7 @@ pr.PyRanges(gtf).to_gtf(snakemake.output.joint_gtf)
 shell(
     "gffread "
     "-w {snakemake.output.txome_fa} "
-    "-g {snakemake.input.genome_fa} "
+    "-g {snakemake.output.genome_fa} "
     "{snakemake.output.joint_gtf} >> {snakemake.log} 2>&1"
 )
 
