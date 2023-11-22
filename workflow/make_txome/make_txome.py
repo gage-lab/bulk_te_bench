@@ -111,9 +111,7 @@ def rmsk_to_gtf(rmsk: pd.DataFrame) -> pd.DataFrame:
 rmsk = rmsk_to_gtf(rmsk)
 
 ### parse and filter gencode ###
-logger.info(
-    f"Parsing gencode GTF, filtering for high confidence transcripts from chromosome(s) {my_chrs}"
-)
+logger.info(f"Parsing gencode GTF, filtering for high confidence transcripts")
 # from https://support.10xgenomics.com/single-cell-gene-expression/software/release-notes/build
 BIOTYPES = [
     "protein_coding",
@@ -164,13 +162,14 @@ def filter_gtf(gtf):
     return out
 
 
-genes = (
-    pr.read_gtf(
-        snakemake.input.gencode_gtf, as_df=True, duplicate_attr=True
-    )  # duplicate_attr=True to keep all tags for each record
-    .query("Chromosome in @chrs")
-    .loc[filter_gtf]
-)
+genes = pr.read_gtf(
+    snakemake.input.gencode_gtf, as_df=True, duplicate_attr=True
+).loc[  # duplicate_attr=True to keep all tags for each record
+    filter_gtf
+]
+
+if len(chrs) > 0:
+    genes = genes[genes.Chromosome.isin(chrs)]
 
 # get unspliced
 logger.info(f"Getting unspliced transcripts from {snakemake.input.gencode_gtf}")
