@@ -213,6 +213,16 @@ def make_unspliced_tx(gtf: pd.DataFrame):
 
 genes = make_unspliced_tx(genes)
 
+if snakemake.wildcards.txome == "test_txome":
+    TX = [
+        "ENST00000401850.5",
+        "ENST00000401959.6",
+        "ENST00000401975.5",
+        "ENST00000401994.5",
+    ]
+    genes = genes.query("transcript_id in @TX")
+    rmsk = rmsk.query("gene_id == 'L1HS'")
+
 # save genes_gtf and rmsk_gtf separately for tetranscripts
 pr.PyRanges(genes).to_gtf(snakemake.output.genes_gtf)
 pr.PyRanges(rmsk[rmsk.Feature == "exon"]).to_gtf(snakemake.output.rmsk_gtf)
