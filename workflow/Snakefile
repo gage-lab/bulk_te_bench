@@ -165,6 +165,12 @@ def get_final_output(wc):
                         quant=q,
                     )
                 )
+        final_output.extend(
+            expand(
+                rules.kmer_similarity.output,
+                txome=txome,
+            )
+        )
 
     return final_output
 
