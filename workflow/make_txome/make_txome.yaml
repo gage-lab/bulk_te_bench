@@ -7,6 +7,8 @@ dependencies:
   - gffread
   - python=3.10
   - samtools
+  - mmh3
+  - biopython
   - pip
   - pip:
     - git+https://github.com/mikecuoco/myutils.git
