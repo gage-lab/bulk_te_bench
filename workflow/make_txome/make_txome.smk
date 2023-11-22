@@ -22,7 +22,8 @@ rule make_txome:
 
 rule kmer_similarity:
     input:
-        rules.make_txome.output.txome_fa,
+        gtf=rules.make_txome.output.joint_gtf,
+        txome_fa=rules.make_txome.output.txome_fa,
     output:
         tsv="results/{txome}/te_kmer_sim.tsv",
         # png="results/{txome}/te_kmer_sim.png"
