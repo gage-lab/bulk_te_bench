@@ -13,52 +13,16 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+from tempfile import NamedTemporaryFile
+
 import pandas as pd
 import pyranges as pr
 from myutils.rmsk import read_rmsk
 from snakemake.shell import shell
 
-# unzip gtf and genome if necessary
-for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:
-    if ".gz" in f:
-        out = f.replace(".gz", "")
-        shell(f"gzip -dcf {f} > {out}")
-snakemake.input.genome_fa = snakemake.input.genome_fa.replace(".gz", "")
-snakemake.input.gencode_gtf = snakemake.input.gencode_gtf.replace(".gz", "")
-
-# index and subset genome
-chrs = snakemake.params.chrs
-my_chrs = " ".join(chrs)
-shell("samtools faidx {snakemake.input.genome_fa}")
-if len(chrs) > 0:
-    shell(
-        "samtools faidx {snakemake.input.genome_fa} {my_chrs} > {snakemake.output.genome_fa}"
-    )
-else:
-    shell("cp {snakemake.input.genome_fa} {snakemake.output.genome_fa}")
-shell("samtools faidx {snakemake.output.genome_fa}")
-
-### parse and filter rmsk ###
-te_subfamilies = snakemake.params.te_subfamilies  # this is a list of subfams
-my_tes = " ".join(te_subfamilies)
-if len(te_subfamilies) == 0:
-    my_tes = "all TEs"
-
-
-logger.info(f"Parsing rmsk, filtering for {my_tes} from chromosome(s) {my_chrs}")
-
-rmsk = read_rmsk(snakemake.input.rmsk_out).query(
-    "genoName in @chrs and has_promoter and is_full_length"
-)
-
-if len(te_subfamilies) > 0:
-    rmsk = rmsk.query("repName in @te_subfamilies")
-
-rmsk.reset_index(drop=True, inplace=True)
-
 
 def rmsk_to_gtf(rmsk: pd.DataFrame) -> pd.DataFrame:
-    "Add columns to make a repeatmasker gtf"
+    "convert RepeatMasker output file to gtf"
 
     rmsk.rename(
         columns={
@@ -93,14 +57,14 @@ def rmsk_to_gtf(rmsk: pd.DataFrame) -> pd.DataFrame:
     rmsk["gene_type"] = "retrogene"
 
     # tx level
-    rmsktx = rmsk.copy().reset_index()
+    rmsktx = rmsk.copy().reset_index(drop=True)
     rmsktx["Feature"] = "transcript"
     rmsktx["transcript_id"] = (
         rmsktx["gene_id"] + "_dup" + rmsktx.groupby("gene_id").cumcount().astype(str)
     )
 
     # exon level
-    rmskex = rmsktx.copy().reset_index()
+    rmskex = rmsktx.copy().reset_index(drop=True)
     rmskex["Feature"] = "exon"
     rmskex["exon_id"] = rmskex.transcript_id
     rmskex["exon_number"] = 1
@@ -108,10 +72,6 @@ def rmsk_to_gtf(rmsk: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([rmsk, rmsktx, rmskex]).sort_values(["Chromosome", "Start", "End"])
 
 
-rmsk = rmsk_to_gtf(rmsk)
-
-### parse and filter gencode ###
-logger.info(f"Parsing gencode GTF, filtering for high confidence transcripts")
 # from https://support.10xgenomics.com/single-cell-gene-expression/software/release-notes/build
 BIOTYPES = [
     "protein_coding",
@@ -162,33 +122,16 @@ def filter_gtf(gtf):
     return out
 
 
-genes = pr.read_gtf(
-    snakemake.input.gencode_gtf, as_df=True, duplicate_attr=True
-).loc[  # duplicate_attr=True to keep all tags for each record
-    filter_gtf
-]
-
-if len(chrs) > 0:
-    genes = genes[genes.Chromosome.isin(chrs)]
-
-# get unspliced
-logger.info(f"Getting unspliced transcripts from {snakemake.input.gencode_gtf}")
-
-
 def make_unspliced_tx(gtf: pd.DataFrame):
     "Make unspliced transcripts from gtf, return gtf with unspliced transcripts added"
 
     # gene level
-    tx = (
-        gtf[gtf.Feature == "transcript"]
-        .set_index(["Chromosome", "Start", "End"])
-        .copy()
-    )
+    ex = gtf[gtf.Feature == "exon"].set_index(["Chromosome", "Start", "End"]).copy()
     unsplicedtx = gtf[gtf.Feature == "gene"].copy()
     unsplicedtx.set_index(["Chromosome", "Start", "End"], inplace=True)
     n_unspliced = len(unsplicedtx)
     logger.info(f"Generating unspliced transcripts from {n_unspliced} genes")
-    unsplicedtx = unsplicedtx[~unsplicedtx.index.isin(tx.index)].reset_index()
+    unsplicedtx = unsplicedtx[~unsplicedtx.index.isin(ex.index)].reset_index()
     n_unspliced -= len(unsplicedtx)
     logger.info(
         f"Removed {n_unspliced} genes that already have an unspliced transcript"
@@ -205,13 +148,81 @@ def make_unspliced_tx(gtf: pd.DataFrame):
     unsplicedex["Feature"] = "exon"
 
     return pd.concat([gtf, unsplicedtx, unsplicedex]).sort_values(
-        ["Chromosome", "Start", "End"]
+        ["Chromosome", "Start"]
     )
 
 
-genes = make_unspliced_tx(genes)
+# unzip gtf and genome if necessary
+for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:
+    if ".gz" in f:
+        logger.info(f"Unzipping {f}")
+        out = f.replace(".gz", "")
+        shell(f"gzip -dcf {f} > {out}")
+snakemake.input.genome_fa = snakemake.input.genome_fa.replace(".gz", "")
+snakemake.input.gencode_gtf = snakemake.input.gencode_gtf.replace(".gz", "")
 
-if snakemake.wildcards.txome == "test_txome":
+# index and subset genome
+chrs = snakemake.params.chrs
+shell("samtools faidx {snakemake.input.genome_fa}")
+if len(chrs) == 0:
+    # if not specified, get primary assembly chromosomes
+    with open(snakemake.input.genome_fa + ".fai") as f:
+        genome_chrs = [l.split("\t")[0] for l in f.readlines()]
+    chrs = [c for c in genome_chrs if "_" not in c]
+my_chrs = " ".join(chrs)
+shell(
+    "samtools faidx {snakemake.input.genome_fa} {my_chrs} > {snakemake.output.genome_fa}"
+)
+shell("samtools faidx {snakemake.output.genome_fa}")
+
+
+# parse and filter rmsk ###
+te_subfamilies = snakemake.params.te_subfamilies  # this is a list of subfams
+my_tes = " ".join(te_subfamilies)
+if len(te_subfamilies) == 0:
+    my_tes = "Alu, SVA, and L1"
+
+
+logger.info(
+    f"Parsing rmsk, filtering for full-length, transcriptionally-competent {my_tes} subfamilies on {my_chrs}"
+)
+rmsk = read_rmsk(snakemake.input.rmsk_out).query(
+    "genoName in @chrs and has_promoter and is_full_length"
+)
+
+if len(te_subfamilies) > 0:
+    rmsk = rmsk.query("repName in @te_subfamilies")
+
+rmsk.reset_index(drop=True, inplace=True)
+rmsk = rmsk_to_gtf(rmsk)
+
+### parse and filter gencode ###
+logger.info(
+    f"Parsing gencode GTF, filtering for high confidence transcripts on {my_chrs}"
+)
+
+genes = (
+    pr.read_gtf(snakemake.input.gencode_gtf, as_df=True, duplicate_attr=True)
+    .loc[filter_gtf]  # duplicate_attr=True to keep all tags for each record
+    .query("Chromosome in @chrs")
+)
+# get unspliced
+logger.info(f"Getting unspliced transcripts from {snakemake.input.gencode_gtf}")
+genes = make_unspliced_tx(genes).reset_index(drop=True)
+
+# annotate which genes that contain TEs
+genes_with_tes = (
+    pr.PyRanges(genes[genes.Feature == "exon"])
+    .join(pr.PyRanges(rmsk[rmsk.Feature == "exon"]), report_overlap=True, suffix="_TE")
+    .df.query("Overlap == (End_TE - Start_TE)")[["transcript_id", "transcript_id_TE"]]
+    .groupby("transcript_id")
+    .agg(lambda x: ",".join(x))
+)
+genes.loc[genes.Feature == "transcript", "contained_TEs"] = genes[
+    genes.Feature == "transcript"
+].join(genes_with_tes, how="left", on="transcript_id")["transcript_id_TE"]
+
+if snakemake.wildcards.txome == "test_txome":  # type: ignore
     TX = [
         "ENST00000401850.5",
         "ENST00000401959.6",
@@ -219,18 +230,31 @@ if snakemake.wildcards.txome == "test_txome":
         "ENST00000401994.5",
     ]
     genes = genes.query("transcript_id in @TX")
-    rmsk = rmsk.query("gene_id == 'L1HS'")
 
-# save genes_gtf and rmsk_gtf separately for tetranscripts
-pr.PyRanges(genes).to_gtf(snakemake.output.genes_gtf)
-pr.PyRanges(rmsk[rmsk.Feature == "exon"]).to_gtf(snakemake.output.rmsk_gtf)
+# save genes_gtf and rmsk_gtf separately, then jointly.
+# use gffread to clean up the gene and joint gtf
+# -F = keep all GFF attributes (for non-exon features)
+#  --keep-exon-attrs : for -F option, do not attempt to reduce redundant exon/CDS attributes
+logger.info(f"Saving {len(genes[genes.Feature == 'transcript'])} transcripts")
+with NamedTemporaryFile(suffix=".gtf") as f:
+    pr.PyRanges(genes).to_gtf(f.name)
+    shell("gffread -TFE {f.name} > {snakemake.output.genes_gtf} 2>> {snakemake.log}")
 
-# concat rmsk and gencode
+logger.info(f"Saving {len(rmsk[rmsk.Feature == 'exon'])} TEs")
+with NamedTemporaryFile(suffix=".gtf") as f:
+    pr.PyRanges(rmsk[rmsk.Feature == "exon"]).to_gtf(f.name)
+    shell(
+        "gffread -TFE --keep-exon-attrs {f.name} | grep '\texon\t' > {snakemake.output.rmsk_gtf} 2>> {snakemake.log}"
+    )
+
 logger.info(f"Concatenating rmsk and gencode")
-gtf = pd.concat([genes, rmsk]).sort_values(["Chromosome", "Start", "End"])
-pr.PyRanges(gtf).to_gtf(snakemake.output.joint_gtf)
-
+gtf = pd.concat([genes, rmsk]).sort_values(["Chromosome", "Start"])
+with NamedTemporaryFile(suffix=".gtf") as f:
+    pr.PyRanges(gtf).to_gtf(f.name)
+    shell("gffread -TFE {f.name} > {snakemake.output.joint_gtf} 2>> {snakemake.log}")
+# import pdb; pdb.set_trace()
 # use gffread to extract unspliced, spliced, and TE sequences
+logger.info(f"Extracting sequences from {snakemake.input.genome_fa}")
 shell(
     "gffread "
     "-w {snakemake.output.txome_fa} "
@@ -238,4 +262,4 @@ shell(
     "{snakemake.output.joint_gtf} >> {snakemake.log} 2>&1"
 )
 
-logger.info(f"Extracting sequences from {snakemake.input.genome_fa}")
+logger.info("Done")
