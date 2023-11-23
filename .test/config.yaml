@@ -10,6 +10,8 @@ txomes:
   test_txome:
     chrs:
       - "chr22"
+    te_subfamilies:
+      - "L1HS"
     simulations:
       test:
         tx: test_sim
