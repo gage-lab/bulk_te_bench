@@ -80,7 +80,8 @@ Parallel(
         readmat=cmat,
         outdir=odir,
         paired=True,
-        error_model="illumina5",
+        error_model="illumina5",  # sequencing error model
+        distr="empirical",  # fragment size distribution
         gzip=True,
         seed=12,
         readlen=int(snakemake.params.readlen),
