@@ -31,5 +31,7 @@ rule kmer_similarity:
         "make_txome.yaml"
     log:
         "results/{txome}/te_kmer_sim.log",
+    params:
+        k=31,  # set this equal to the k used in salmon_index
     script:
         "kmer_similarity.py"

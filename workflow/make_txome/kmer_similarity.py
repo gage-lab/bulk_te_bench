@@ -41,8 +41,11 @@ def jaccard_similarity(a: set, b: set) -> float:
 # 24kb * (roughly) 100,000 txs = 2.4GB
 logger.info("Hashing kmers from transcripts")
 hashed = {}
+k = snakemake.params.k
 for r in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
-    hashed[r.id] = seq_to_hashkmers(str(r.seq).upper(), k=50)
+    if len(r.seq) < k:
+        logger.warning(f"Skipping {r.id}: length {len(r.seq)}bp < k={k}bp")
+    hashed[r.id] = seq_to_hashkmers(str(r.seq).upper(), k)
 
 # load gtf
 t2g = (
