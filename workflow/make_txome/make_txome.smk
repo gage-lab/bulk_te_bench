@@ -5,7 +5,9 @@ rule make_txome:
         rmsk_out=remote_or_local(config["rmsk_out"]),
     output:
         genome_fa="results/{txome}/genome.fa",
+        genome_fai="results/{txome}/genome.fa.fai",
         txome_fa="results/{txome}/txome.fa",
+        txome_faidx="results/{txome}/txome.fa.fai",
         genes_gtf="results/{txome}/txome_genes.gtf",
         rmsk_gtf="results/{txome}/txome_rmsk.gtf",
         joint_gtf="results/{txome}/txome_joint.gtf",
@@ -25,7 +27,7 @@ rule kmer_similarity:
         gtf=rules.make_txome.output.joint_gtf,
         txome_fa=rules.make_txome.output.txome_fa,
     output:
-        tsv="results/{txome}/te_kmer_sim.tsv",
+        npz="results/{txome}/te_kmer_sim.npz",
         # png="results/{txome}/te_kmer_sim.png"
     conda:
         "make_txome.yaml"

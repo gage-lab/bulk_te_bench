@@ -16,8 +16,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 import pyranges as pr
-from Bio import SeqIO
 from mmh3 import hash
+from pyfaidx import Fasta
+from scipy.sparse import lil_matrix, save_npz
 
 
 def seq_to_hashkmers(seq: str, k: int) -> set:
@@ -25,7 +26,6 @@ def seq_to_hashkmers(seq: str, k: int) -> set:
     kmers = []
     for i in range(len(seq) - k + 1):
         kmers.append(hash(seq[i : i + k], 42, signed=False))
-        # kmers.append(seq[i:i+k])
     return set(kmers)
 
 
@@ -34,20 +34,20 @@ def jaccard_similarity(a: set, b: set) -> float:
     return len(a.intersection(b)) / len(a.union(b))
 
 
-# How big does this get with the full txome?
-# assuming all txs are 6kb (conservative, most are shorter)
-# each tx will have 6000-k+1 kmers, hashed to 32 bits (4 bytes) each
-# 6000 * 4 = 24kb per tx
-# 24kb * (roughly) 100,000 txs = 2.4GB
-logger.info("Hashing kmers from transcripts")
-hashed = {}
 k = snakemake.params.k
-for r in SeqIO.parse(snakemake.input.txome_fa, "fasta"):
-    if len(r.seq) < k:
-        logger.warning(f"Skipping {r.id}: length {len(r.seq)}bp < k={k}bp")
-    hashed[r.id] = seq_to_hashkmers(str(r.seq).upper(), k)
+
+# get transcripts from fasta
+logger.info(f"Loading fasta from {snakemake.input.txome_fa}")
+fasta = Fasta(snakemake.input.txome_fa, as_raw=True, sequence_always_upper=True)
+txs = []
+for tx in fasta.keys():
+    if len(fasta[tx]) >= k:
+        txs.append(tx)
+    else:
+        logger.warning(f"Skipping {tx}, {len(fasta[tx])} < k={k}bp")
 
 # load gtf
+logger.info(f"Loading gtf from {snakemake.input.gtf}")
 t2g = (
     pr.read_gtf(snakemake.input.gtf, as_df=True)
     .query("Feature == 'transcript'")
@@ -55,13 +55,21 @@ t2g = (
     .to_dict()
 )
 
-logger.info("Computing pairwise Jaccard similarity")
-with open(snakemake.output.tsv, "w") as f:
-    f.write("tx1\ttx2\tgene\tjaccard_similarity\n")
-    for i, t1 in enumerate(hashed):
-        for j, t2 in enumerate(hashed):
-            if i > j:
-                continue
-            gene = t2g[t1] if t2g[t1] == t2g[t2] else "NA"
-            score = jaccard_similarity(hashed[t1], hashed[t2])
-            f.write(f"{t1}\t{t2}\t{gene}\t{score}\n")
+# compute pairwise similarity
+logger.info(f"Computing pairwise Jaccard similarity between kmers of length {k}")
+matrix = lil_matrix((len(txs), len(txs)), dtype="float32")
+
+for i, t1 in enumerate(txs):
+    h1 = seq_to_hashkmers(fasta[t1][:], k)
+    for j, t2 in enumerate(txs):
+        if i > j:
+            continue
+        h2 = seq_to_hashkmers(fasta[t2][:], k)
+        gene = t2g[t1] if t2g[t1] == t2g[t2] else "NA"
+        score = jaccard_similarity(h1, h2)
+        if score > 0:
+            matrix[i, j] = score
+
+# save matrix
+logger.info(f"Saving matrix to {snakemake.output.npz}")
+save_npz(snakemake.output.npz, matrix.tocsr())

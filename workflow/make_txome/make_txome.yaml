@@ -8,7 +8,9 @@ dependencies:
   - python=3.10
   - samtools
   - mmh3
+  - scipy
   - biopython
+  - pyfaidx
   - pip
   - pip:
     - git+https://github.com/mikecuoco/myutils.git
