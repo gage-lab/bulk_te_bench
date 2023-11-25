@@ -214,7 +214,20 @@ genes = make_unspliced_tx(genes).reset_index(drop=True)
 genes_with_tes = (
     pr.PyRanges(genes[genes.Feature == "exon"])
     .join(pr.PyRanges(rmsk[rmsk.Feature == "exon"]), report_overlap=True, suffix="_TE")
-    .df.query("Overlap == (End_TE - Start_TE)")[["transcript_id", "transcript_id_TE"]]
+    .df.query("Overlap == (End_TE - Start_TE)")[
+        ["transcript_id", "transcript_id_TE", "Strand_TE"]
+    ]
+)
+
+genes_with_tes["transcript_id_TE"] = (
+    genes_with_tes["transcript_id_TE"].astype(str)
+    + " ("
+    + genes_with_tes["Strand_TE"].astype(str)
+    + ")"
+)
+genes_with_tes = (
+    # concatenate transcript_id_TE and Strand_TE
+    genes_with_tes[["transcript_id", "transcript_id_TE"]]
     .groupby("transcript_id")
     .agg(lambda x: ",".join(x))
 )
@@ -225,6 +238,7 @@ genes.loc[genes.Feature == "transcript", "contained_TEs"] = genes[
 if snakemake.wildcards.txome == "test_txome":  # type: ignore
     TX = [
         "ENST00000401850.5",
+        "ENSG00000100154.15-I",
         "ENST00000401959.6",
         "ENST00000401975.5",
         "ENST00000401994.5",
@@ -261,5 +275,6 @@ shell(
     "-g {snakemake.output.genome_fa} "
     "{snakemake.output.joint_gtf} >> {snakemake.log} 2>&1"
 )
+shell("samtools faidx {snakemake.output.txome_fa}")
 
 logger.info("Done")
