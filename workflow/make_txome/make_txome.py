@@ -210,7 +210,9 @@ genes = (
 logger.info(f"Getting unspliced transcripts from {snakemake.input.gencode_gtf}")
 genes = make_unspliced_tx(genes).reset_index(drop=True)
 
-# annotate which genes that contain TEs
+# annotate transcripts containing TEs and TEs contained in transcripts
+# use exons in genes dataframe to avoid transcripts that may not include the TE in a splice variant
+# Since unspliced transcripts are annotated with a single exon, if they contain a TE, the exon will contain it
 genes_with_tes = (
     pr.PyRanges(genes[genes.Feature == "exon"])
     .join(pr.PyRanges(rmsk[rmsk.Feature == "exon"]), report_overlap=True, suffix="_TE")
@@ -226,7 +228,6 @@ genes_with_tes["transcript_id_TE"] = (
     + ")"
 )
 genes_with_tes = (
-    # concatenate transcript_id_TE and Strand_TE
     genes_with_tes[["transcript_id", "transcript_id_TE"]]
     .groupby("transcript_id")
     .agg(lambda x: ",".join(x))
@@ -235,15 +236,35 @@ genes.loc[genes.Feature == "transcript", "contained_TEs"] = genes[
     genes.Feature == "transcript"
 ].join(genes_with_tes, how="left", on="transcript_id")["transcript_id_TE"]
 
-if snakemake.wildcards.txome == "test_txome":  # type: ignore
-    TX = [
-        "ENST00000401850.5",
-        "ENSG00000100154.15-I",
-        "ENST00000401959.6",
-        "ENST00000401975.5",
-        "ENST00000401994.5",
+tes_in_genes = (
+    pr.PyRanges(rmsk[rmsk.Feature == "exon"])
+    .join(
+        pr.PyRanges(genes[genes.Feature == "exon"]),
+        how="left",
+        report_overlap=True,
+        suffix="_gene",
+    )
+    .df.query("Overlap == (End - Start)")[
+        ["transcript_id", "transcript_id_gene", "Strand_gene"]
     ]
-    genes = genes.query("transcript_id in @TX")
+)
+tes_in_genes["transcript_id_gene"] = (
+    tes_in_genes["transcript_id_gene"].astype(str)
+    + " ("
+    + tes_in_genes["Strand_gene"].astype(str)
+    + ")"
+)
+tes_in_genes = (
+    tes_in_genes[["transcript_id", "transcript_id_gene"]]
+    .groupby("transcript_id")
+    .agg(lambda x: ",".join(x))
+)
+rmsk.loc[rmsk.Feature.isin(["exon", "transcript"]), "contained_in"] = rmsk[
+    rmsk.Feature.isin(["exon", "transcript"])
+].join(tes_in_genes, how="left", on="transcript_id")["transcript_id_gene"]
+
+if snakemake.wildcards.txome == "test_txome":  # type: ignore
+    genes = genes.query("gene_id == 'ENSG00000100154.15'")
 
 # save genes_gtf and rmsk_gtf separately, then jointly.
 # use gffread to clean up the gene and joint gtf
@@ -252,7 +273,9 @@ if snakemake.wildcards.txome == "test_txome":  # type: ignore
 logger.info(f"Saving {len(genes[genes.Feature == 'transcript'])} transcripts")
 with NamedTemporaryFile(suffix=".gtf") as f:
     pr.PyRanges(genes).to_gtf(f.name)
-    shell("gffread -TFE {f.name} > {snakemake.output.genes_gtf} 2>> {snakemake.log}")
+    shell(
+        "gffread -TFE --keep-genes {f.name} > {snakemake.output.genes_gtf} 2>> {snakemake.log}"
+    )
 
 logger.info(f"Saving {len(rmsk[rmsk.Feature == 'exon'])} TEs")
 with NamedTemporaryFile(suffix=".gtf") as f:
@@ -265,8 +288,10 @@ logger.info(f"Concatenating rmsk and gencode")
 gtf = pd.concat([genes, rmsk]).sort_values(["Chromosome", "Start"])
 with NamedTemporaryFile(suffix=".gtf") as f:
     pr.PyRanges(gtf).to_gtf(f.name)
-    shell("gffread -TFE {f.name} > {snakemake.output.joint_gtf} 2>> {snakemake.log}")
-# import pdb; pdb.set_trace()
+    shell(
+        "gffread -TFE --keep-genes {f.name} > {snakemake.output.joint_gtf} 2>> {snakemake.log}"
+    )
+
 # use gffread to extract unspliced, spliced, and TE sequences
 logger.info(f"Extracting sequences from {snakemake.input.genome_fa}")
 shell(
