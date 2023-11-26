@@ -1,7 +1,6 @@
 from snakemake.utils import min_version, validate
 
 import pandas as pd
-from collections import defaultdict
 import os
 
 ##### setup remote providers #####
@@ -14,9 +13,9 @@ HTTP = HTTP.RemoteProvider()
 def remote_or_local(path: str):
     "Specify remote provider if path is a URL, otherwise return path"
     if path.startswith("ftp"):
-        return FTP.remote(path, immediate_close=True)
+        return FTP.remote(path, immediate_close=True, keep_local=True)
     elif path.startswith("http"):
-        return HTTP.remote(path)
+        return HTTP.remote(path, keep_local=True)
     elif os.path.exists(path):
         return path
     else:
