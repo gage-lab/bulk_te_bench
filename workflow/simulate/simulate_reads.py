@@ -113,11 +113,11 @@ read_counts = pd.DataFrame(0, index=counts.index, columns=counts.columns, dtype=
 for fagz in samples.keys():
 
     # ignore read 2
-    if "_2.fasta.gz" in str(fagz):
+    if "_2.fasta.gz" in fagz.name:
         continue
 
     # get sample name
-    sample = str(int(fagz.name[7:9]) - 1)
+    sample = fagz.name[0:9]
 
     # count reads from each tx
     with gzip.open(fagz, "rt") as fa:
