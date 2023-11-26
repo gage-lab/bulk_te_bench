@@ -37,7 +37,7 @@ properties:
                   tx:
                     type: string
                     patternProperties:
-                      "uniform_sim|gtex_sim|test_sim":
+                      "uniform_sim|gtex_sim":
                   te:
                     type: string
                     patternProperties:
