@@ -80,7 +80,6 @@ def get_fq(wc):
         ss = pd.read_csv(config["txomes"][wc.txome]["ont_samplesheet"], sep="\t")
         ss = ss[ss["sample"] == wc.sample]
         ss = ss[ss["libtype"] == wc.libtype]
-        ss = ss[ss["replicate"] == int(wc.replicate)]
         assert not ss.empty, f"Could not find sample {wc.sample} in samplesheet"
         return {"query": ss["fq"].tolist()}
     elif wc.sim == "real_illumina":  # get real Illumina short reads for star and salmon
@@ -164,6 +163,8 @@ def get_final_output(wc):
                         quant=q,
                     )
                 )
+
+        # kmer similarity
         final_output.extend(
             expand(
                 rules.kmer_similarity.output,

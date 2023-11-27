@@ -7,7 +7,6 @@ def get_estimates(wc):
             zip,
             sample=ss["sample"],
             libtype=ss["libtype"],
-            replicate=ss["replicate"],
             allow_missing=True,
         )
     elif wc.sim == "real_illumina":

@@ -1,2 +1,2 @@
-sample	replicate	fq1	fq2
-a	1	ngs-test-data/rnaseq/a.chr22.1.fq.gz	ngs-test-data/rnaseq/a.chr22.2.fq.gz
+sample	fq1	fq2
+a	ngs-test-data/rnaseq/a.chr22.1.fq.gz	ngs-test-data/rnaseq/a.chr22.2.fq.gz

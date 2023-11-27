@@ -17,9 +17,9 @@ rule minimap2:
         unpack(get_fq),
         target=rules.minimap2_index.output,  # can be either genome index or genome fasta
     output:
-        "results/{txome}/{sim}/{sample}_{libtype}_rep{replicate}.bam",
+        "results/{txome}/{sim}/{sample}_{libtype}.bam",
     log:
-        "results/{txome}/{sim}/{sample}_{libtype}_rep{replicate}.log",
+        "results/{txome}/{sim}/{sample}_{libtype}.log",
     params:
         extra=lambda wc: "-ax map-ont -k14 -uf"
         if wc.libtype == "directRNA"

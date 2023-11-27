@@ -105,12 +105,12 @@ rule salmon_quant_bam_ont:
         txome=rules.make_txome.output.txome_fa,
         gtf=rules.make_txome.output.joint_gtf,
     output:
-        quant_tx="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/quant.sf",
-        quant_ge="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/quant.genes.sf",
-        meta_info="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/aux_info/meta_info.json",
-        eq_classes="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/aux_info/eq_classes.txt.gz",
+        quant_tx="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}/quant.sf",
+        quant_ge="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}/quant.genes.sf",
+        meta_info="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}/aux_info/meta_info.json",
+        eq_classes="results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}/aux_info/eq_classes.txt.gz",
     log:
-        "results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}_rep{replicate}/{sample}_{libtype}_rep{replicate}.log",
+        "results/{txome}/{sim}/salmon_quant_bam_ont/{sample}_{libtype}/{sample}_{libtype}.log",
     params:
         libtype="A",
         extra="",  # cannot do bias correction with --ont

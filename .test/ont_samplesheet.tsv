@@ -1,3 +1,3 @@
-sample	replicate	libtype	fq
-a	1	directRNA	ngs-test-data/longrnaseq/ONT_directRNA/a.chr22.fq.gz
-a	1	cDNA	ngs-test-data/longrnaseq/ONT_cDNA/a.chr22.fq.gz
+sample	libtype	fq
+a	directRNA	ngs-test-data/longrnaseq/ONT_directRNA/a.chr22.fq.gz
+a	cDNA	ngs-test-data/longrnaseq/ONT_cDNA/a.chr22.fq.gz
