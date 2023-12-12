@@ -17,9 +17,11 @@ import numpy as np
 import pandas as pd
 import pyranges as pr
 from Bio import SeqIO
+from mmh3 import hash
 from scipy.stats import dirichlet
 
 
+# TODO: define function to make tpm from counts
 # TODO: simulate splicing rate per gene
 def tx_from_gene_counts(gene_counts: pd.DataFrame, g2t: dict, tx: list[str]):
     """
@@ -33,33 +35,30 @@ def tx_from_gene_counts(gene_counts: pd.DataFrame, g2t: dict, tx: list[str]):
     for gene in gene_counts.index:
         ntx = len(g2t[gene])
         for sample in gene_counts.columns:
-            np.random.seed(
-                hash((gene, sample))
-            )  # get unique seed for each gene/sample pair
-            gene_counts = gene_counts.loc[gene, sample]
+            # set unique seed for each gene/sample pair
+            seed = hash(gene + sample, 42, signed=False)
+            np.random.seed(seed)
+            gc = gene_counts.loc[gene, sample]
+            cointoss = np.random.randint(0, 2)  # 0 or 1
             if ntx == 1:
-                tx_counts = np.array([gene_counts])
+                tx_counts = np.array([gc])
             elif ntx == 2:
                 # For genes with 2 transcripts, gene counts are either
                 # (i) split among both isoforms according to flat Dirichlet distribution (α = (1,1))
                 # (ii) attributed to a single isoform.
-                cointoss = np.random.randint(0, 2)  # 0 or 1
                 if cointoss == 0:
-                    tx_counts = dirichlet.rvs([1, 1], size=1)[0] * gene_counts
+                    tx_counts = dirichlet.rvs([1, 1], random_state=seed)[0] * gc
                 else:
-                    tx_counts = np.array([gene_counts, 0])
+                    tx_counts = np.array([gc, 0])
 
             elif ntx > 2:
                 # For genes with more than 2 transcripts, gene counts are either
                 # (i) split among 3 randomly chosen isoforms according to flat Dirichlet distribution (α = (1,1,1))
                 # (ii) attributed to a single isoform.
-                cointoss = np.random.randint(0, 2)
                 if cointoss == 0:
-                    tx_counts = np.array(
-                        dirichlet.rvs([1, 1, 1], size=1)[0] * gene_counts
-                    )
+                    tx_counts = dirichlet.rvs([1, 1, 1], random_state=seed)[0] * gc
                 else:
-                    tx_counts = np.array([gene_counts, 0, 0])
+                    tx_counts = np.array([gc, 0, 0])
 
                 # if there is more than 3 transcripts, add zeros to the tx_counts
                 if len(tx_counts) != ntx:
@@ -78,17 +77,17 @@ def tx_from_gene_counts(gene_counts: pd.DataFrame, g2t: dict, tx: list[str]):
 
 
 # read in gtfs
-genes_gtf = pr.read_gtf(snakemake.input.genes_gtf, as_df=True)
+genes_gtf = pr.read_gtf(snakemake.input.genes_gtf, as_df=True).query(
+    "Feature == 'transcript'"
+)
+# genes_gtf = genes_gtf[~genes_gtf["transcript_id"].str.contains("-I")] # exclude unspliced transcripts
 g2t = (
-    genes_gtf.query("Feature == 'transcript'")
-    .groupby("gene_id")
-    .apply(lambda x: x["transcript_id"].tolist())
-    .to_dict()
+    genes_gtf.groupby("gene_id").apply(lambda x: x["transcript_id"].tolist()).to_dict()
 )
 rmsk = pr.read_gtf(snakemake.input.rmsk_gtf, as_df=True)
 
 # setup variables
-txs = genes_gtf.query("Feature == 'transcript'")["transcript_id"].unique()
+txs = genes_gtf["transcript_id"].unique()
 samples = [f"sample_{i:02d}" for i in range(1, int(snakemake.params.nsamples) + 1)]
 
 ## UNIFORM COUNTS ##
@@ -125,7 +124,7 @@ elif snakemake.wildcards.txte_sim == "gtex_sim":
     genes_gtf_only_genes = set(genes_gtf["gene_id"]) - set(gtex_counts["Name"])
 
     logger.info(
-        f"{len(shared_genes)}/{len(gtex_counts)} GTEx genes are shared with txome"
+        f"{len(shared_genes)}/{len(gtex_counts)} GTEx genes are shared with txome\n"
         f"{len(shared_genes)}/{len(g2t)} txome genes are shared with GTEx"
     )
 
@@ -161,8 +160,9 @@ elif snakemake.wildcards.txte_sim == "single_intergenic_l1hs":
         my_te = np.random.choice(rmsk[rmsk["contained_in"].isna()].transcript_id)
         for te in rmsk.itertuples():
             if te.transcript_id == my_te:
+                # avg tpm in GTEx per tx in 40-120
                 counts.loc[te.transcript_id, sample] = (
-                    3 * np.abs(te.End - te.Start) // 100
+                    20 * np.abs(te.End - te.Start) // 100
                 )
 
 else:

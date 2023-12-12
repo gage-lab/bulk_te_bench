@@ -19,3 +19,4 @@ dependencies:
   - pandas
   - pyranges
   - scipy
+  - mmh3
