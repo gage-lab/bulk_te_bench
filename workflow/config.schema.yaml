@@ -56,8 +56,10 @@ properties:
                   - strand_specific
                   - readlen
                   - nsamples
-        required:
-          - simulations
+          illumina_samplesheet:
+            type: string
+          ont_samplesheet:
+            type: string
 
 required:
   - genome_fa

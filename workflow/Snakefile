@@ -36,12 +36,13 @@ validate(config, "config.schema.yaml")
 txomes, txte_sims, sims = set(), set(), set()
 for txome in config["txomes"]:
     txomes.add(txome)
-    for sim in config["txomes"][txome]["simulations"]:
-        tx_sim = config["txomes"][txome]["simulations"][sim]["tx"]
-        te_sim = config["txomes"][txome]["simulations"][sim]["te"]
-        txte_sims.add(tx_sim)
-        txte_sims.add(te_sim)
-        sims.add(sim)
+    if "simulations" in config["txomes"][txome]:
+        for sim in config["txomes"][txome]["simulations"]:
+            tx_sim = config["txomes"][txome]["simulations"][sim]["tx"]
+            te_sim = config["txomes"][txome]["simulations"][sim]["te"]
+            txte_sims.add(tx_sim)
+            txte_sims.add(te_sim)
+            sims.add(sim)
     if "ont_samplesheet" in config["txomes"][txome]:
         sims.add("real_ont")
     if "illumina_samplesheet" in config["txomes"][txome]:
@@ -153,16 +154,18 @@ def get_final_output(wc):
                 )
 
         # get quantification for simulated Illumina short reads
-        for sim in config["txomes"][txome]["simulations"]:
-            for q in shortread_quantifiers:
-                final_output.extend(
-                    expand(
-                        rules.aggregate.output,
-                        txome=txome,
-                        sim=sim,
-                        quant=q,
+        if "simulations" in config["txomes"][txome]:
+            print(f"found simulations for {txome}")
+            for sim in config["txomes"][txome]["simulations"]:
+                for q in shortread_quantifiers:
+                    final_output.extend(
+                        expand(
+                            rules.aggregate.output,
+                            txome=txome,
+                            sim=sim,
+                            quant=q,
+                        )
                     )
-                )
 
         # kmer similarity
         final_output.extend(
