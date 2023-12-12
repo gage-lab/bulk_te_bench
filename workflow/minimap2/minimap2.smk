@@ -12,6 +12,13 @@ rule minimap2_index:
         "v2.11.1/bio/minimap2/index"
 
 
+def get_minimap2_params(wildcards):
+    if wildcards.libtype == "directRNA":
+        return "-ax map-ont -uf -k14"
+    else:
+        return "-ax map-ont"
+
+
 rule minimap2:
     input:
         unpack(get_fq),
@@ -21,9 +28,7 @@ rule minimap2:
     log:
         "results/{txome}/{sim}/{sample}_{libtype}.log",
     params:
-        extra=lambda wc: "-ax map-ont -k14 -uf"
-        if wc.libtype == "directRNA"
-        else "-ax map-ont",
+        extra=get_minimap2_params,
         sorting="none",  # optional: Enable sorting. Possible values: 'none', 'queryname' or 'coordinate'
         sort_extra="",  # optional: extra arguments for samtools/picard
     threads: 3
