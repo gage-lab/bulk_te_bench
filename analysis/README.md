@@ -1,5 +1,6 @@
 This analysis folder contains several analyses for looking at L1HS expression in the [Singapore Nanopore Expression Project](https://github.com/GoekeLab/sg-nex-data).
 
+[Slides](https://docs.google.com/presentation/d/1dDzzKKmCZ8zZJ1IdnnbIdjcjSQFwULDBAFj0lTNhwRA/edit#slide=id.g28e8f426d9c_0_0)
 # Structure
 Data used for analyses is generated in `preview.ipnyb` and stored in respective directories, or the `data/` directory.
 
@@ -64,6 +65,9 @@ How many multimappers occur at L1 sites in illumina vs nanopore data? Relative t
 
 
 # Aggregate data for replicates across runs
+
+## Files
+
 
 ## new idea
 Look in pape/github how they split up replicates + runs (https://github.com/GoekeLab/sg-nex-data/issues/55)
