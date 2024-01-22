@@ -1,6 +1,21 @@
+rule salmon_decoy:
+    input:
+        transcriptome=rules.make_txome.output.txome_fa,
+        genome=rules.make_txome.output.genome_fa,
+    output:
+        gentrome="results/{txome}/gentrome.fa",
+        decoys="results/{txome}/decoys.txt",
+    threads: 2
+    log:
+        "results/{txome}/decoys.txt",
+    wrapper:
+        "v3.3.2/bio/salmon/decoys"
+
+
 rule salmon_index:
     input:
-        rules.make_txome.output.txome_fa,
+        gentrome=rules.salmon_decoy.output.gentrome,
+        decoys=rules.salmon_decoy.output.decoys,
     output:
         multiext(
             "results/{txome}/resources/salmon_index/",
@@ -28,7 +43,7 @@ rule salmon_index:
     conda:
         "salmon.yaml"
     shell:
-        "salmon index -t {input} -i $(dirname {output}) -k {params.k} > {log} 2>&1"
+        "salmon index -t {input.gentrome} -i $(dirname {output}) --decoys {input.decoys} -k {params.k} > {log} 2>&1"
 
 
 rule salmon_quant_reads:
@@ -46,7 +61,7 @@ rule salmon_quant_reads:
         "results/{txome}/{sim}/salmon_quant_reads/{sample}/{sample}.log",
     params:
         libtype="A",
-        extra="--gcBias --posBias --seqBias",
+        extra="--validateMappings --seqBias --gcBias --posBias",
     threads: 2
     conda:
         "salmon.yaml"
