@@ -2,8 +2,11 @@
 
 # run code in "analysis" directory
 
+# Add something that for short reads makes lookup table for each mate of read pairs and then combines them
+# put /1 or /2 at end of read ID to distinguish between mates
+
 # Directories containing BAM files
-directories=("longread_files" "illumina_files")
+directories=("longread_files")
 
 # Iterate over each directory
 for input_directory in "${directories[@]}"; do
