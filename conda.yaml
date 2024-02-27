@@ -16,9 +16,14 @@ dependencies:
   - mygene
   - pip
   - tqdm
+  - seaborn
+  - pandas
   - black
   - tree
   - git>=2
   - git-lfs>=2.2.1
+  - openpyxl
+  - snakemake==7.32.0
+  - snakefmt
   - pip:
-    - git+https://github.com/mikecuoco/myutils.git
+      - git+https://github.com/mikecuoco/myutils.git
