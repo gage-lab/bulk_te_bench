@@ -1,3 +1,4 @@
+# create a decoy transcriptome for salmon
 rule salmon_decoy:
     input:
         transcriptome=rules.make_txome.output.txome_fa,
@@ -12,6 +13,7 @@ rule salmon_decoy:
         "v3.3.2/bio/salmon/decoys"
 
 
+# create a salmon index with the decoy transcriptome
 rule salmon_index:
     input:
         gentrome=rules.salmon_decoy.output.gentrome,
@@ -46,6 +48,7 @@ rule salmon_index:
         "salmon index -t {input.gentrome} -i $(dirname {output}) --decoys {input.decoys} -k {params.k} > {log} 2>&1"
 
 
+# quantify short reads with salmon (mapping-based)
 rule salmon_quant_reads:
     input:
         unpack(get_fq),
@@ -81,6 +84,7 @@ rule salmon_quant_reads:
         """
 
 
+# quantify short reads with salmon (alignment-based)
 rule salmon_quant_bam:
     input:
         bam=rules.star_align.output.txome_bam,
@@ -114,6 +118,7 @@ rule salmon_quant_bam:
         """
 
 
+# quantify long reads with salmon (alignment-based)
 rule salmon_quant_bam_ont:
     input:
         bam=rules.minimap2.output,
