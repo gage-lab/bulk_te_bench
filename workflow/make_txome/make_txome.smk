@@ -22,6 +22,20 @@ rule make_txome:
         "make_txome.py"
 
 
+rule txome_report:
+    input:
+        gencode=remote_or_local(config["gencode_gtf"]),
+        joint="results/{txome}/txome_joint.gtf",
+    output:
+        "results/{txome}/txome_report.ipynb",
+    conda:
+        "make_txome.yaml"
+    log:
+        notebook="results/{txome}/txome_report.ipynb",
+    notebook:
+        "txome_report.py.ipynb"
+
+
 rule kmer_similarity:
     input:
         gtf=rules.make_txome.output.joint_gtf,

@@ -112,7 +112,7 @@ shortread_quantifiers = {
     "salmon_quant_reads_ge": rules.salmon_quant_reads.output.quant_ge,
     "salmon_quant_bam_tx": rules.salmon_quant_bam.output.quant_tx,
     "salmon_quant_bam_ge": rules.salmon_quant_bam.output.quant_ge,
-    "l1em": rules.l1em.output.full_counts,
+    # "l1em": rules.l1em.output.full_counts,
 }
 
 longread_quantifiers = {
@@ -167,10 +167,18 @@ def get_final_output(wc):
                         )
                     )
 
-        # kmer similarity
+        # # kmer similarity
+        # final_output.extend(
+        #     expand(
+        #         rules.kmer_similarity.output,
+        #         txome=txome,
+        #     )
+        # )
+
+        # txome report
         final_output.extend(
             expand(
-                rules.kmer_similarity.output,
+                rules.txome_report.output,
                 txome=txome,
             )
         )

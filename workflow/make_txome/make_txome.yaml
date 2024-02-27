@@ -11,6 +11,8 @@ dependencies:
   - scipy
   - biopython
   - pyfaidx
+  - jupyter
+  - ipykernel
   - pip
   - pip:
-    - git+https://github.com/mikecuoco/myutils.git
+      - git+https://github.com/mikecuoco/myutils.git
