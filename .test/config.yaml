@@ -12,6 +12,7 @@ txomes:
       - "chr22"
     te_subfamilies:
       - "L1HS"
+    full_length: False
     simulations:
       test:
         tx: uniform_sim

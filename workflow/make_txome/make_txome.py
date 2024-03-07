@@ -3,9 +3,6 @@
 __author__ = "Michael Cuoco"
 
 import logging
-
-logger = logging.getLogger(__name__)
-
 from tempfile import NamedTemporaryFile
 
 import pandas as pd
@@ -41,6 +38,8 @@ def rmsk_to_gtf(rmsk: pd.DataFrame) -> pd.DataFrame:
             "family_id",
             "class_id",
             "gene_name",
+            "is_full_length",
+            "has_promoter",
         ]
     ].copy()
     rmsk["Source"] = "RepeatMasker"
@@ -155,78 +154,16 @@ def make_unspliced_tx(gtf: pd.DataFrame):
     )
 
 
-if __name__ == "__main__":
-
-    from myutils.rmsk import read_rmsk
-    from snakemake.shell import shell
-
-    # send log to file
-    logging.basicConfig(
-        filename=snakemake.log[0],
-        filemode="w",
-        level=logging.INFO,
-    )
-
-    # unzip gtf and genome if necessary
-    for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:
-        if ".gz" in f:
-            logger.info(f"Unzipping {f}")
-            out = f.replace(".gz", "")
-            shell(f"gzip -dcf {f} > {out}")
-    snakemake.input.genome_fa = snakemake.input.genome_fa.replace(".gz", "")
-    snakemake.input.gencode_gtf = snakemake.input.gencode_gtf.replace(".gz", "")
-
-    # index and subset genome
-    chrs = snakemake.params.chrs
-    shell("samtools faidx {snakemake.input.genome_fa}")
-    if len(chrs) == 0:
-        # if not specified, get primary assembly chromosomes
-        with open(snakemake.input.genome_fa + ".fai") as f:
-            genome_chrs = [l.split("\t")[0] for l in f.readlines()]
-        chrs = [c for c in genome_chrs if "_" not in c]
-    my_chrs = " ".join(chrs)
-    shell(
-        "samtools faidx {snakemake.input.genome_fa} {my_chrs} > {snakemake.output.genome_fa}"
-    )
-    shell("samtools faidx {snakemake.output.genome_fa}")
-
-    # parse and filter rmsk ###
-    te_subfamilies = snakemake.params.te_subfamilies  # this is a list of subfams
-    my_tes = " ".join(te_subfamilies)
-    if len(te_subfamilies) == 0:
-        my_tes = "Alu, SVA, and L1"
-
-    logger.info(
-        f"Parsing rmsk, filtering for full-length, transcriptionally-competent {my_tes} subfamilies on {my_chrs}"
-    )
-    rmsk = read_rmsk(snakemake.input.rmsk_out).query(
-        "genoName in @chrs and has_promoter and is_full_length"
-    )
-
-    if len(te_subfamilies) > 0:
-        rmsk = rmsk.query("repName in @te_subfamilies")
-
-    rmsk.reset_index(drop=True, inplace=True)
-    rmsk = rmsk_to_gtf(rmsk)
-
-    ### parse and filter gencode ###
-    logger.info(
-        f"Parsing gencode GTF, filtering for high confidence transcripts on {my_chrs}"
-    )
-
-    genes = (
-        pr.read_gtf(snakemake.input.gencode_gtf, as_df=True, duplicate_attr=True)
-        .loc[filter_gtf]  # duplicate_attr=True to keep all tags for each record
-        .query("Chromosome in @chrs")
-        .reset_index(drop=True)
-    )
-    no_tx = genes.groupby("gene_id")["transcript_id"].count() == 0
-    no_tx_genes = no_tx[no_tx].index
-    genes = genes[genes["gene_id"].isin(no_tx_genes) == False]
-
-    # get unspliced
-    logger.info(f"Getting unspliced transcripts from {snakemake.input.gencode_gtf}")
-    genes = make_unspliced_tx(genes).reset_index(drop=True)
+def annotate_containment(
+    genes: pd.DataFrame, rmsk: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Annotate genes with TEs and TEs with genes
+    :param genes: gtf dataframe
+    :param rmsk: gtf dataframe
+    """
+    # TODO: fix doublet quotes in contained fields
+    # TODO: make this code more readable
 
     # annotate transcripts containing TEs and TEs contained in transcripts
     # use exons in genes dataframe to avoid transcripts that may not include the TE in a splice variant
@@ -247,11 +184,13 @@ if __name__ == "__main__":
         + genes_with_tes["Strand_TE"].astype(str)
         + ")"
     )
+
     genes_with_tes = (
         genes_with_tes[["transcript_id", "transcript_id_TE"]]
         .groupby("transcript_id")
         .agg(lambda x: ",".join(x))
     )
+
     genes.loc[genes.Feature == "transcript", "contained_TEs"] = genes[
         genes.Feature == "transcript"
     ].join(genes_with_tes, how="left", on="transcript_id")["transcript_id_TE"]
@@ -268,20 +207,98 @@ if __name__ == "__main__":
             ["transcript_id", "transcript_id_gene", "Strand_gene"]
         ]
     )
+
     tes_in_genes["transcript_id_gene"] = (
         tes_in_genes["transcript_id_gene"].astype(str)
         + " ("
         + tes_in_genes["Strand_gene"].astype(str)
         + ")"
     )
+
     tes_in_genes = (
         tes_in_genes[["transcript_id", "transcript_id_gene"]]
         .groupby("transcript_id")
         .agg(lambda x: ",".join(x))
     )
+
     rmsk.loc[rmsk.Feature.isin(["exon", "transcript"]), "contained_in"] = rmsk[
         rmsk.Feature.isin(["exon", "transcript"])
     ].join(tes_in_genes, how="left", on="transcript_id")["transcript_id_gene"]
+
+    return genes, rmsk
+
+
+if __name__ == "__main__":
+
+    # send log to file
+    logging.basicConfig(
+        filename=snakemake.log[0],  # type: ignore
+        filemode="w",
+        level=logging.INFO,
+    )
+
+    logger = logging.getLogger(__name__)
+
+    from myutils.rmsk import read_rmsk
+    from snakemake.shell import shell
+
+    # unzip gtf and genome if necessary
+    for f in [snakemake.input.gencode_gtf, snakemake.input.genome_fa]:  # type: ignore
+        if ".gz" in f:
+            logger.info(f"Unzipping {f}")
+            out = f.replace(".gz", "")
+            shell(f"gzip -dcf {f} > {out}")
+    snakemake.input.genome_fa = snakemake.input.genome_fa.replace(".gz", "")  # type: ignore
+    snakemake.input.gencode_gtf = snakemake.input.gencode_gtf.replace(".gz", "")  # type: ignore
+
+    # index and subset genome
+    chrs = snakemake.params.chrs  # type: ignore
+    shell("samtools faidx {snakemake.input.genome_fa}")
+    if len(chrs) == 0:
+        # if not specified, get primary assembly chromosomes
+        with open(snakemake.input.genome_fa + ".fai") as f:  # type: ignore
+            genome_chrs = [l.split("\t")[0] for l in f.readlines()]
+        chrs = [c for c in genome_chrs if "_" not in c]
+    my_chrs = " ".join(chrs)
+    shell(
+        "samtools faidx {snakemake.input.genome_fa} {my_chrs} > {snakemake.output.genome_fa}"
+    )
+    shell("samtools faidx {snakemake.output.genome_fa}")
+
+    ### parse and filter gencode ###
+    logger.info(
+        f"Parsing gencode GTF, filtering for high confidence transcripts on {my_chrs}"
+    )
+    genes = (
+        pr.read_gtf(snakemake.input.gencode_gtf, as_df=True, duplicate_attr=True)  # type: ignore
+        .loc[filter_gtf]  # duplicate_attr=True to keep all tags for each record
+        .query("Chromosome in @chrs")
+    )
+    # get unspliced
+    logger.info(f"Getting unspliced transcripts from {snakemake.input.gencode_gtf}")  # type: ignore
+    genes = make_unspliced_tx(genes).reset_index(drop=True)
+
+    # parse and filter rmsk ###
+    te_subfamilies = (
+        snakemake.params.te_subfamilies
+    )  # this is a list of subfams # type: ignore
+    my_tes = " ".join(te_subfamilies)
+    if len(te_subfamilies) == 0:
+        my_tes = "Alu, SVA, and L1"
+
+    logger.info(f"Parsing rmsk, filtering for {my_tes} subfamilies on {my_chrs}")
+    rmsk = read_rmsk(snakemake.input.rmsk_out).query("genoName in @chrs").reset_index(drop=True)  # type: ignore
+    if len(te_subfamilies) > 0:
+        rmsk = rmsk.query("repName in @te_subfamilies")
+        rmsk.reset_index(drop=True, inplace=True)
+
+    if snakemake.params.full_length == True:  # type: ignore
+        logger.info("Filtering for full length TEs")
+        rmsk = rmsk.query("has_promoter and is_full_length")
+        rmsk.reset_index(drop=True, inplace=True)
+
+    rmsk = rmsk_to_gtf(rmsk)
+    genes, rmsk = annotate_containment(genes, rmsk)
 
     if snakemake.wildcards.txome == "test_txome":  # type: ignore
         genes = genes.query("gene_id == 'ENSG00000100154.15'")
@@ -313,7 +330,7 @@ if __name__ == "__main__":
         )
 
     # use gffread to extract unspliced, spliced, and TE sequences
-    logger.info(f"Extracting sequences from {snakemake.input.genome_fa}")
+    logger.info(f"Extracting sequences from {snakemake.input.genome_fa}")  # type: ignore
     shell(
         "gffread "
         "-w {snakemake.output.txome_fa} "

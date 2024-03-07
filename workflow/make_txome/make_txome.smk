@@ -18,6 +18,7 @@ rule make_txome:
     params:
         te_subfamilies=lambda wc: config["txomes"][wc.txome].get("te_subfamilies", []),
         chrs=lambda wc: config["txomes"][wc.txome].get("chrs", []),
+        full_length=lambda wc: config["txomes"][wc.txome].get("full_length", False),
     script:
         "make_txome.py"
 
