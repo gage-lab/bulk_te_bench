@@ -14,7 +14,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-import pickle as pkl
 from pathlib import Path
 
 import pandas as pd
@@ -40,6 +39,13 @@ def read_l1em(f):
     )
 
 
+def read_oarfish_quant(f):
+    """Reads a Oarfish file into a pandas dataframe"""
+    return pd.read_csv(
+        f, sep="\t", index_col=0, usecols=[0, 2], names=["name", "counts"], header=0
+    )
+
+
 read_fx = {
     "telocal": read_tetranscripts,
     "tecount": read_tetranscripts,
@@ -49,6 +55,7 @@ read_fx = {
     "salmon_quant_reads_ge": read_salmon_quant,
     "salmon_quant_bam_tx": read_salmon_quant,
     "salmon_quant_bam_ge": read_salmon_quant,
+    "oarfish_quant_bam_ont": read_oarfish_quant,
     "l1em": read_l1em,
 }
 
