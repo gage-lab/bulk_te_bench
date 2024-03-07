@@ -14,7 +14,7 @@ rule star_align:
     input:
         unpack(get_fq),
         idx=rules.star_index.output,
-        gtf=rules.make_txome.output.joint_gtf,  # TODO: change this to gtf with rmsk and unspliced features
+        gtf=rules.make_txome.output.joint_gtf,
     output:
         genome_bam="results/{txome}/{sim}/star_align/{sample}/Aligned.out.bam",
         txome_bam="results/{txome}/{sim}/star_align/{sample}/Aligned.toTranscriptome.out.bam",
