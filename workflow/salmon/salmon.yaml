@@ -5,3 +5,4 @@ channels:
 dependencies:
   - salmon>=1.8.0
   - samtools
+  - oarfish

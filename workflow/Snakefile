@@ -32,7 +32,7 @@ configfile: "config.yaml"
 
 validate(config, "config.schema.yaml")
 
-# constrain wildcards according to config
+#### constrain wildcards according to config and quantifiers
 txomes, txte_sims, sims = set(), set(), set()
 for txome in config["txomes"]:
     txomes.add(txome)
@@ -62,10 +62,14 @@ wildcard_constraints:
             "salmon_quant_bam_tx",
             "salmon_quant_bam_ge",
             "l1em",
+            "oarfish_quant_bam_ont",
             "salmon_quant_bam_ont_tx",
             "salmon_quant_bam_ont_ge",
         ]
     ),
+
+
+####
 
 
 include: "make_txome/make_txome.smk"
@@ -75,7 +79,6 @@ include: "simulate/simulate.smk"
 def get_fq(wc):
     """
     Return the reads for a given sample.
-    For short reads only
     """
     if wc.sim == "real_ont":  # get real ONT long reads for minimap2
         ss = pd.read_csv(config["txomes"][wc.txome]["ont_samplesheet"], sep="\t")
@@ -116,6 +119,7 @@ shortread_quantifiers = {
 }
 
 longread_quantifiers = {
+    "oarfish_quant_bam_ont": rules.oarfish_quant_bam_ont.output.quant,
     "salmon_quant_bam_ont_tx": rules.salmon_quant_bam_ont.output.quant_tx,
     "salmon_quant_bam_ont_ge": rules.salmon_quant_bam_ont.output.quant_ge,
 }

@@ -152,3 +152,28 @@ rule salmon_quant_bam_ont:
             -o $(dirname {output.quant_tx}) \
             {params.extra} > {log} 2>&1
         """
+
+
+# quantify long reads with oarfish (alignment-based)
+rule oarfish_quant_bam_ont:
+    input:
+        bam=rules.minimap2.output,
+        txome=rules.make_txome.output.txome_fa,
+    output:
+        quant="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}.quant",
+        meta_info="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}.meta_info.json",
+        infreps="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}.infreps.pq",
+    log:
+        "results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}/{sample}_{libtype}.log",
+    params:
+        libtype="A",
+        extra="",  # cannot do bias correction with --ont
+    threads: 2
+    conda:
+        "salmon.yaml"
+    shell:
+        """
+        PREFIX="$(dirname {output.quant})/$(basename -s .quant {output.quant})"
+        oarfish --alignments {input.bam} --threads {threads} --num-bootstraps 30 \
+            --output $PREFIX > {log} 2>&1
+        """
