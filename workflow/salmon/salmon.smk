@@ -160,9 +160,9 @@ rule oarfish_quant_bam_ont:
         bam=rules.minimap2.output,
         txome=rules.make_txome.output.txome_fa,
     output:
-        quant="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}.quant",
-        meta_info="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}.meta_info.json",
-        infreps="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}.infreps.pq",
+        quant="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}/{sample}_{libtype}.quant",
+        meta_info="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}/{sample}_{libtype}.meta_info.json",
+        infreps="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}/{sample}_{libtype}.infreps.pq",
     log:
         "results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}/{sample}_{libtype}.log",
     params:
