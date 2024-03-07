@@ -60,6 +60,7 @@ rule salmon_quant_reads:
         lib="results/{txome}/{sim}/salmon_quant_reads/{sample}/lib_format_counts.json",
         meta_info="results/{txome}/{sim}/salmon_quant_reads/{sample}/aux_info/meta_info.json",
         eq_classes="results/{txome}/{sim}/salmon_quant_reads/{sample}/aux_info/eq_classes.txt.gz",
+        mappings="results/{txome}/{sim}/salmon_quant_reads/{sample}/mappings.bam",
     log:
         "results/{txome}/{sim}/salmon_quant_reads/{sample}/{sample}.log",
     params:
@@ -80,7 +81,7 @@ rule salmon_quant_reads:
             -1 {input.fq1} \
             -2 {input.fq2} \
             -o $(dirname {output.quant_tx}) \
-            {params.extra} > {log} 2>&1
+            {params.extra} --writeMappings 2> {log} | samtools view -bS > {output.mappings} > {log}
         """
 
 
