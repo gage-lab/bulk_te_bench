@@ -122,7 +122,7 @@ rule salmon_quant_bam:
 # quantify long reads with salmon (alignment-based)
 rule salmon_quant_bam_ont:
     input:
-        bam=expand(rules.minimap2.output, ome="txome", allowing=True),
+        bam=expand(rules.minimap2.output, ome="txome", allow_missing=True),
         txome=rules.make_txome.output.txome_fa,
         gtf=rules.make_txome.output.joint_gtf,
     output:
@@ -157,7 +157,7 @@ rule salmon_quant_bam_ont:
 # quantify long reads with oarfish (alignment-based)
 rule oarfish_quant_bam_ont:
     input:
-        bam=rules.minimap2.output,
+        bam=expand(rules.minimap2.output, ome="txome", allow_missing=True),
         txome=rules.make_txome.output.txome_fa,
     output:
         quant="results/{txome}/{sim}/oarfish_quant_bam_ont/{sample}_{libtype}/{sample}_{libtype}.quant",

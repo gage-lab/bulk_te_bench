@@ -11,7 +11,7 @@ rule minimap2_index:
     output:
         "results/{txome}/resources/minimap2_index/{ome}.mmi",
     log:
-        "results/{txome}/resources/minimap2_index/index.log",
+        "results/{txome}/resources/minimap2_index/{ome}.log",
     params:
         extra="",  # optional additional args
     threads: 3
