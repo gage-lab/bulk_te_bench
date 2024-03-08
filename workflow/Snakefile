@@ -103,6 +103,7 @@ def get_fq(wc):
 
 include: "star/star.smk"
 include: "minimap2/minimap2.smk"
+include: "mm_analysis/mm_analysis.smk"
 include: "salmon/salmon.smk"
 include: "tetranscripts/tetranscripts.smk"
 include: "l1em/l1em.smk"
@@ -190,6 +191,21 @@ def get_final_output(wc):
     return final_output
 
 
+def get_intersect_bam(wc):
+    ss = pd.read_csv(config["txomes"][wc.txome]["ont_samplesheet"], sep="\t")
+    return expand(
+        rules.intersect_bam.output,
+        zip,
+        sample=ss["sample"],
+        libtype=ss["libtype"],
+        allow_missing=True,
+    )
+
+
 rule all:
     input:
         get_final_output,
+        expand(
+            rules.intersect_bam.output,
+            txome=config["txomes"],
+        ),
