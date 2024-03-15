@@ -5,7 +5,7 @@ def get_intersect_bam_input(wc):
         out["bam"] = rules.filter_bam.output.top_AS_bam
         out["unique_reads"] = rules.filter_bam.output.top_AS_unique_reads
     else:
-        out["bam"] = ("results/{txome}/bam/{sample}/{sample}.bam",)
+        out["bam"] = "results/{txome}/bam/{sample}/{sample}.bam"
         out["unique_reads"] = rules.filter_bam.output.unique_reads
 
 
