@@ -3,9 +3,11 @@
 __author__ = ["Michael Cuoco", "Joelle Faybishenko"]
 
 import logging
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from time import perf_counter
 
-from pysam import AlignmentFile
+import pysam
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,36 +22,37 @@ def get_top_alns(inbam: str):
 
     logging.info(f"Reading {inbam} and filtering top alignments...")
     start = perf_counter()
-    with AlignmentFile(inbam, "rb") as bam:
+    with pysam.AlignmentFile(inbam, "rb") as bam:
         for aln in bam:
             # skip those that are bad reads
-            if aln.has_tag("AS"):
-                # if the read has already been seen, check if the current alignment is better
-                if aln.query_name in top_alns:
-                    # if the current alignment is better, replace the old alignment and score
-                    if aln.get_tag("AS") > top_score[aln.query_name]:
-                        top_alns[aln.query_name] = [aln]
-                        top_score[aln.query_name] = aln.get_tag("AS")
-                    # if the current alignment is the same as the best, add it to the list
-                    elif aln.get_tag("AS") == top_score[aln.query_name]:
-                        top_alns[aln.query_name].append(aln)
-                # if the read has not been seen, add it to the dictionaries
-                else:
+            if not aln.has_tag("AS"):
+                continue
+            # if the read has already been seen, check if the current alignment is better
+            if aln.query_name in top_alns:
+                # if the current alignment is better, replace the old alignment and score
+                if aln.get_tag("AS") > top_score[aln.query_name]:
                     top_alns[aln.query_name] = [aln]
                     top_score[aln.query_name] = aln.get_tag("AS")
+                # if the current alignment is the same as the best, add it to the list
+                elif aln.get_tag("AS") == top_score[aln.query_name]:
+                    top_alns[aln.query_name].append(aln)
+            # if the read has not been seen, add it to the dictionaries
+            else:
+                top_alns[aln.query_name] = [aln]
+                top_score[aln.query_name] = aln.get_tag("AS")
     logging.info(
         f"Finished filtering top alignments in {perf_counter() - start:.2f} seconds."
     )
 
-    outbam = inbam.replace(".bam", "_top.bam")
+    tempbam = NamedTemporaryFile(dir=str(Path(inbam).parent), suffix=".bam")
     unique_reads = inbam.replace(".bam", "_unique_reads.txt")
     logging.info(
-        f"Writing top alignments to {outbam} and unique-mapping read IDs to {unique_reads}..."
+        f"Writing top alignments to {tempbam.name} and unique-mapping read IDs to {unique_reads}..."
     )
     start = perf_counter()
     with open(unique_reads, "w") as out_reads:
-        with AlignmentFile(inbam, "rb") as bam:
-            with AlignmentFile(outbam, "wb", header=bam.header) as out_bam:
+        with pysam.AlignmentFile(inbam, "rb") as bam:
+            with pysam.AlignmentFile(tempbam.name, "wb", header=bam.header) as out_bam:
                 for alns in top_alns.values():
                     # if there is only one alignment, write the read ID to the unique-mapping file
                     if len(alns) == 1:
@@ -60,6 +63,14 @@ def get_top_alns(inbam: str):
     logging.info(
         f"Finished writing top alignments in {perf_counter() - start:.2f} seconds."
     )
+
+    outbam = inbam.replace(".bam", "_top.bam")
+    logging.info(f"Sorting {tempbam.name} to {outbam} and indexing...")
+    pysam.sort("-o", outbam, tempbam.name)
+    tempbam.close()
+    pysam.index(outbam)
+
+    logging.info(f"Finished indexing {outbam}.")
 
 
 if __name__ == "__main__":
