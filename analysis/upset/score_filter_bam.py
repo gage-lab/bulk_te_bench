@@ -31,7 +31,7 @@ def get_top_alns(inbam: str):
                         top_alns[aln.query_name] = [aln]
                         top_score[aln.query_name] = aln.get_tag("AS")
                     # if the current alignment is the same as the best, add it to the list
-                    else:
+                    elif aln.get_tag("AS") == top_score[aln.query_name]:
                         top_alns[aln.query_name].append(aln)
                 # if the read has not been seen, add it to the dictionaries
                 else:
