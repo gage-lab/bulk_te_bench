@@ -3,7 +3,7 @@
 __author__ = ["Michael Cuoco", "Joelle Faybishenko"]
 
 import logging
-from datetime import perf_counter
+from datetime import time
 
 from pysam import AlignmentFile
 
@@ -19,7 +19,7 @@ def get_top_alns(inbam: str):
     top_alns, top_score = {}, {}
 
     logging.info(f"Reading {inbam} and filtering top alignments...")
-    start = perf_counter()
+    start = time.perf_counter()
     with AlignmentFile(inbam, "rb") as bam:
         for aln in bam:
             # if the read has already been seen, check if the current alignment is better
@@ -36,7 +36,7 @@ def get_top_alns(inbam: str):
                 top_alns[aln.query_name] = [aln]
                 top_score[aln.query_name] = aln.alignment_score
     logging.info(
-        f"Finished filtering top alignments in {perf_counter() - start:.2f} seconds."
+        f"Finished filtering top alignments in {time.perf_counter() - start:.2f} seconds."
     )
 
     outbam = inbam.replace(".bam", "_top.bam")
@@ -44,7 +44,7 @@ def get_top_alns(inbam: str):
     logging.info(
         f"Writing top alignments to {outbam} and unique-mapping read IDs to {unique_reads}..."
     )
-    start = perf_counter()
+    start = time.perf_counter()
     with open(unique_reads, "w") as out_reads:
         with AlignmentFile(outbam, "wb", header=bam.header) as out_bam:
             for alns in top_alns.values():
@@ -55,7 +55,7 @@ def get_top_alns(inbam: str):
                 for a in alns:
                     out_bam.write(a)
     logging.info(
-        f"Finished writing top alignments in {perf_counter() - start:.2f} seconds."
+        f"Finished writing top alignments in {time.perf_counter() - start:.2f} seconds."
     )
 
 
