@@ -27,19 +27,20 @@ def get_top_alns(inbam: str):
             # skip those that are bad reads
             if not aln.has_tag("AS"):
                 continue
+            id = aln.query_name + str(aln.is_read1)
             # if the read has already been seen, check if the current alignment is better
             if aln.query_name in top_alns:
                 # if the current alignment is better, replace the old alignment and score
-                if aln.get_tag("AS") > top_score[aln.query_name]:
-                    top_alns[aln.query_name] = [aln]
-                    top_score[aln.query_name] = aln.get_tag("AS")
+                if aln.get_tag("AS") > top_score[id]:
+                    top_alns[id] = [aln]
+                    top_score[id] = aln.get_tag("AS")
                 # if the current alignment is the same as the best, add it to the list
-                elif aln.get_tag("AS") == top_score[aln.query_name]:
-                    top_alns[aln.query_name].append(aln)
+                elif aln.get_tag("AS") == top_score[id]:
+                    top_alns[id].append(aln)
             # if the read has not been seen, add it to the dictionaries
             else:
-                top_alns[aln.query_name] = [aln]
-                top_score[aln.query_name] = aln.get_tag("AS")
+                top_alns[id] = [aln]
+                top_score[id] = aln.get_tag("AS")
     logging.info(
         f"Finished filtering top alignments in {perf_counter() - start:.2f} seconds."
     )
