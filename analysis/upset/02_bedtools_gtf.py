@@ -10,22 +10,18 @@ import pyranges as pr
 import pysam
 from myutils import rmsk
 
-# Use the best alignment bam file or not
-BEST_ALIGNMENT = True
-ILLUMINA = False  # If illumina is true then best should be false
-
-"""
-Calls bedtools intersect function.
-
-@param file_path: path to the bam file
-@param family: the family of the L1 element
-@param best_alignment: whether to use the best alignment bam file or not
-@return: the output file path
-
-"""
+ILLUMINA = True
 
 
-def run_bedtools_intersect(file_path: str, family: str, best_alignment: bool):
+def run_bedtools_intersect(file_path: str, family: str):
+    """
+    Calls bedtools intersect function.
+
+    @param file_path: path to sorted bam file
+    @param family: the family of the L1 element
+    @return: the output file path
+
+    """
 
     categories = [
         f"{family}",
@@ -52,11 +48,7 @@ def run_bedtools_intersect(file_path: str, family: str, best_alignment: bool):
             "0.5",
         ]
 
-        if best_alignment:
-            # add "_best.bed"
-            output_file = f"{prefix}/{cat}_best.bed"
-        else:
-            output_file = f"{prefix}/{cat}.bed"
+        output_file = f"{prefix}/{cat}.bed"
 
         with open(output_file, "w") as outfile:
             subprocess.run(cmd, stdout=outfile)
@@ -65,21 +57,13 @@ def run_bedtools_intersect(file_path: str, family: str, best_alignment: bool):
 
 ### ###
 # Get the L1 families
-L1_families = ["L1HS", "L1PA2"]
+L1_families = ["L1HS", "L1PA2", "L1PA3", "L1PA6"]
 
-"""if BEST_ALIGNMENT:
-    bam_files = [
-        "../longread_files/SGNex_MCF7_directcDNA_replicate3_run3/SGNex_MCF7_directcDNA_replicate3_run3_bestAS.bam",
-        "../longread_files/SGNex_MCF7_directcDNA_replicate1_run2/SGNex_MCF7_directcDNA_replicate1_run2_bestAS.bam",
-        "../longread_files/SGNex_MCF7_directcDNA_replicate4_run2/SGNex_MCF7_directcDNA_replicate4_run2_bestAS.bam",
-    ]
-
-else:
-    bam_files = [
+"""bam_files = [
         "../longread_files/SGNex_MCF7_directcDNA_replicate3_run3/SGNex_MCF7_directcDNA_replicate3_run3.bam",
         "../longread_files/SGNex_MCF7_directcDNA_replicate1_run2/SGNex_MCF7_directcDNA_replicate1_run2.bam",
         "../longread_files/SGNex_MCF7_directcDNA_replicate4_run2/SGNex_MCF7_directcDNA_replicate4_run2.bam",
-    ]"""
+]
 
 
 bam = "../longread_files/SGNex_MCF7_directcDNA_replicate3_run3/SGNex_MCF7_directcDNA_replicate3_run3.bam"
@@ -88,8 +72,18 @@ for i, family in enumerate(L1_families):
     print(f"{i}: processing {family}")
     last_file = run_bedtools_intersect(bam, family, False)
 
-bam = "../longread_files/SGNex_MCF7_directcDNA_replicate3_run3/SGNex_MCF7_directcDNA_replicate3_run3_bestAS.bam"
-print(f"*****Processing {bam}*****")
-for i, family in enumerate(L1_families):
-    print(f"{i}: processing {family}")
-    last_file = run_bedtools_intersect(bam, family, True)
+"""
+
+if ILLUMINA:
+    bam_files = [
+        # "../illumina_files/SGNex_MCF7_Illumina_replicate2_run1/SGNex_MCF7_Illumina_replicate2_run1_top.bam",
+        "../illumina_files/SGNex_MCF7_Illumina_replicate3_run1/SGNex_MCF7_Illumina_replicate3_run1_top.bam",
+        "../illumina_files/SGNex_MCF7_Illumina_replicate4_run1/SGNex_MCF7_Illumina_replicate4_run1_top.bam",
+    ]
+
+
+for bam in bam_files:
+    print(f"*****Processing {bam}*****")
+    for i, family in enumerate(L1_families):
+        print(f"{i}: processing {family}")
+        last_file = run_bedtools_intersect(bam, family)
