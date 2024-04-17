@@ -83,8 +83,13 @@ if __name__ == "__main__":
         description="Filter a BAM file to keep only the top scoring alignment for each read."
     )
     parser.add_argument("inbam", help="Path to input BAM file")
+    # optional argument for output directory
+
     parser.add_argument(
-        "outdir", help="Optional: path to output directory", default=False
+        "--outdir",
+        help="Optional: path to output directory",
+        default=False,
+        required=False,
     )
     args = parser.parse_args()
 
