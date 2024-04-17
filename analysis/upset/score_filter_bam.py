@@ -12,7 +12,7 @@ import pysam
 logging.basicConfig(level=logging.INFO)
 
 
-def get_top_alns(inbam: str):
+def get_top_alns(inbam: str, output_dir: str):
     """
     Filter a BAM file to keep only the top scoring alignment for each read.
     :param infile: str: path to input BAM file
@@ -45,8 +45,10 @@ def get_top_alns(inbam: str):
         f"Finished filtering top alignments in {perf_counter() - start:.2f} seconds."
     )
 
-    tempbam = NamedTemporaryFile(dir=str(Path(inbam).parent), suffix=".bam")
-    unique_reads = inbam.replace(".bam", "_unique_reads.txt")
+    tempbam = NamedTemporaryFile(dir=output_dir, suffix=".bam")
+    unique_reads = str(Path(output_dir) / Path(inbam).name).replace(
+        ".bam", "_unique_reads.txt"
+    )
     logging.info(
         f"Writing top alignments to {tempbam.name} and unique-mapping read IDs to {unique_reads}..."
     )
@@ -65,7 +67,7 @@ def get_top_alns(inbam: str):
         f"Finished writing top alignments in {perf_counter() - start:.2f} seconds."
     )
 
-    outbam = inbam.replace(".bam", "_top.bam")
+    outbam = str(Path(output_dir) / Path(inbam).name).replace(".bam", "_top.bam")
     logging.info(f"Sorting {tempbam.name} to {outbam} and indexing...")
     pysam.sort("-o", outbam, tempbam.name)
     tempbam.close()
@@ -81,5 +83,11 @@ if __name__ == "__main__":
         description="Filter a BAM file to keep only the top scoring alignment for each read."
     )
     parser.add_argument("inbam", help="Path to input BAM file")
+    parser.add_argument(
+        "outdir", help="Optional: path to output directory", default=False
+    )
     args = parser.parse_args()
-    get_top_alns(args.inbam)
+
+    if not args.outdir:
+        args.outdir = str(Path(args.inbam).parent)
+    get_top_alns(args.inbam, args.outdir)
