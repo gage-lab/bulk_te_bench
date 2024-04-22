@@ -14,7 +14,7 @@ import pyranges as pr
 from myutils import rmsk
 
 
-def run_bedtools_intersect(file_path: str, family: str):
+def run_bedtools_intersect(file_path: str, family: str, outdir: str = None):
     """
     Calls bedtools intersect function.
 
@@ -32,7 +32,11 @@ def run_bedtools_intersect(file_path: str, family: str):
         f"truncate_intronic_{family}",
     ]
 
-    prefix = "/".join(file_path.split("/")[:-1])
+    if outdir is None:
+        prefix = "/".join(file_path.split("/")[:-1])
+    else:
+        prefix = outdir
+
     for cat in categories:
 
         cmd = [
@@ -59,7 +63,7 @@ def run_bedtools_intersect(file_path: str, family: str):
 if __name__ == "__main__":
 
     # Get the L1 families
-    L1_families = ["L1HS", "L1PA2", "L1PA3", "L1PA6"]
+    L1_families = ["L1HS"]  # , "L1PA2", "L1PA3", "L1PA6"]
 
     from argparse import ArgumentParser
 
@@ -67,10 +71,16 @@ if __name__ == "__main__":
         description="Intersect reads in BAM file with gtf files to find which reads intersect with L1 families. Output is bed files in same directory as input BAM file."
     )
     parser.add_argument("inbam", help="Path to input BAM file")
+    parser.add_argument(
+        "--outdir",
+        help="Optional: path to output directory",
+        default=None,
+        required=False,
+    )
 
     args = parser.parse_args()
 
     print(f"*****Processing {args.inbam}*****")
     for i, family in enumerate(L1_families):
         print(f"{i}: processing {family}")
-        last_file = run_bedtools_intersect(args.inbam, family)
+        last_file = run_bedtools_intersect(args.inbam, family, args.outdir)
