@@ -62,9 +62,6 @@ def run_bedtools_intersect(file_path: str, family: str, outdir: str = None):
 
 if __name__ == "__main__":
 
-    # Get the L1 families
-    L1_families = ["L1HS"]  # , "L1PA2", "L1PA3", "L1PA6"]
-
     from argparse import ArgumentParser
 
     parser = ArgumentParser(
@@ -77,8 +74,22 @@ if __name__ == "__main__":
         default=None,
         required=False,
     )
+    # add optional boolean arg for L1 family "chr"
+    parser.add_argument(
+        "--chr",
+        help="Optional: add chr to L1 family name",
+        action="store_true",
+        default=False,
+        required=False,
+    )
 
     args = parser.parse_args()
+
+    # Get the L1 families
+    L1_families = ["L1HS", "L1PA2", "L1PA3", "L1PA6"]
+
+    if args.chr:
+        L1_families = [f"{family}chr" for family in L1_families]
 
     print(f"*****Processing {args.inbam}*****")
     for i, family in enumerate(L1_families):
