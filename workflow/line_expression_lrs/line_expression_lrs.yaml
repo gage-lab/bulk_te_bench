@@ -1,0 +1,12 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - minimap2==2.24
+  - repeatmasker==4.1.5
+  - python=3
+  - seqtk=1.2
+  - longreadsum==1.3.0
+  - samtools==1.15.1
+  - bedtools==2.30.0

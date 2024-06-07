@@ -126,6 +126,7 @@ longread_quantifiers = {
 
 
 include: "aggregate/aggregate.smk"
+include: "line_expression_lrs/line_expression_lrs.smk"
 
 
 def get_final_output(wc):
