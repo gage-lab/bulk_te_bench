@@ -52,7 +52,6 @@ rule preprocess_input:
 rule preprocess_mapping:
     input:
         step1=rules.preprocess_input.output,
-        ref=remote_or_local(config["genome_fa"]),
         script=rules.download_line_expresssion_lrs.output[1],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.sam",
@@ -64,7 +63,36 @@ rule preprocess_mapping:
     shell:
         """
         cd results/LINE-Expression-LRS/scripts
-        ./$(basename {input.script}) {params.sample} ../../../{input.ref}
+        ./$(basename {input.script}) {params.sample}
+        """
+
+
+rule L1_detection:
+    input:
+        step2=rules.preprocess_mapping.output[1],
+        script=rules.download_line_expresssion_lrs.output[2],
+    output:
+        multiext(
+            "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/{sample}_{libtype}_mapped_cDNA_1kb.fa.",
+            "align",
+            "cat",
+            "masked",
+            "ori.out",
+            "out",
+            "out.xm",
+            "tbl",
+        ),
+        "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/{sample}_{libtype}_div10.fa",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/div10_LINEs.out",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/div10_readIDs.txt",
+    conda:
+        "line_expression_lrs.yaml"
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+    shell:
+        """
+        cd results/LINE-Expression-LRS/scripts
+        ./$(basename {input.script}) {params.sample}
         """
 
 
@@ -78,7 +106,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.preprocess_mapping.output,  # TODO: update this with last rule in this part of pipeline
+                rules.L1_detection.output,  # TODO: update this with last rule in this part of pipeline
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
