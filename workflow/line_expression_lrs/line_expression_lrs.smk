@@ -135,6 +135,51 @@ rule map_hg38:
         """
 
 
+rule map_qc_LRS:
+    input:
+        bam_input=rules.map_hg38.output[2],
+    output:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}.log",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}/bam_summary.txt",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}/img",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}/st_bam_statistics_dynamic.html",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}/st_bam_statistics.html",
+    conda:
+        "line_expression_lrs.yaml"
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+    shell:  # TODO add threads
+        """
+        cd results/LINE-Expression-LRS/{params.sample}/c_hg38_mapping_LRS/
+        longreadsum bam -i $(basename {input.bam_input}) -o {params.sample}
+        """
+
+
+### after this we need a new parameter: active, inactive, or ORF2. Moving forwards with ORF2 for now for now
+### I think this will not work because the OG authors had no idea how relative variables worked
+rule read_filter:
+    input:
+        step5=rules.map_qc_LRS.output[1],
+        script=rules.download_line_expresssion_lrs.output[5],
+    output:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/{l1_ref_type}/{sample}_{libtype}_read_filter_passed.bam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/{l1_ref_type}/{sample}_{libtype}_read_filter_passed.sorted.bam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/{l1_ref_type}/{sample}_{libtype}_read_filter_passed.sorted.bam.bai",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/{l1_ref_type}/{sample}_{libtype}_bedgraph.bg",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/{l1_ref_type}/{sample}_{libtype}_bedgraph_clean.bg",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/{l1_ref_type}/{sample}_{libtype}_bedgraph_sorted.bg",
+    conda:
+        "line_expression_lrs.yaml"
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+        l1_ref_type="ORF2",  #l1_ref_type=lambda wc: wc.l1_ref_type
+    shell:
+        """
+        cd results/LINE-Expression-LRS/scripts
+        ./$(basename {input.script}) {params.sample} {params.l1_ref_type}
+        """
+
+
 def get_lrs_output(wc):
     for txome in config["txomes"]:
         if "ont_samplesheet" in config["txomes"][txome]:
@@ -145,7 +190,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.map_hg38.output,  # TODO: update this with last rule in this part of pipeline
+                rules.map_qc_LRS.output,  # TODO: update this with last rule in this part of pipeline
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
