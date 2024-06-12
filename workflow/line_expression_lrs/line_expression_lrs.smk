@@ -96,6 +96,45 @@ rule L1_detection:
         """
 
 
+rule move_reference_genome:
+    input:
+        step1=rules.preprocess_input.output,
+        ref=remote_or_local(config["genome_fa"]),
+        gen=remote_or_local(config["gencode_gtf"]),
+    output:
+        newref="results/LINE-Expression-LRS/{sample}_{libtype}/references/hg38.fa",  # disclaimer: there is no guarantee these are hg38 and gencode v40
+        newgen="results/LINE-Expression-LRS/{sample}_{libtype}/references/gencode.v40.annotation.bed",
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+    shell:
+        """
+        mkdir -p results/LINE-Expression-LRS/{params.sample}/references
+        cp {input.ref} {output.newref}
+        cp {input.gen} {output.newgen}
+        """
+
+
+rule map_hg38:
+    input:
+        step3=rules.L1_detection.output[0],
+        script=rules.download_line_expresssion_lrs.output[3],
+        ref=rules.move_reference_genome.output[0],
+    output:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.bam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam.bai",
+    conda:
+        "line_expression_lrs.yaml"
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+    shell:
+        """
+        cd results/LINE-Expression-LRS/scripts
+        ./$(basename {input.script}) {params.sample}
+        """
+
+
 def get_lrs_output(wc):
     for txome in config["txomes"]:
         if "ont_samplesheet" in config["txomes"][txome]:
@@ -106,7 +145,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.L1_detection.output,  # TODO: update this with last rule in this part of pipeline
+                rules.map_hg38.output,  # TODO: update this with last rule in this part of pipeline
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
