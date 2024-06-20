@@ -320,6 +320,30 @@ rule final_map_qc_LRS:
         """
 
 
+rule normalization_wgt_avg:
+    input:
+        step9=rules.final_map_qc_LRS.output,
+        script=rules.download_line_expresssion_lrs.output[9],
+    output:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/normalized_active_regions.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/coverage_weighted_avg.bed",
+    conda:
+        "line_expression_lrs.yaml"
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+        L1_ref_type="active",
+    log:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/log/normalization_wgt_avg.log",
+    shell:
+        """
+        logfile="../{params.sample}/log/normalization_wgt_avg.log"
+
+        cd results/LINE-Expression-LRS/scripts
+        ./$(basename {input.script}) {params.sample} {params.L1_ref_type} > $logfile 2>&1
+
+        """
+
+
 def get_lrs_output(wc):
     for txome in config["txomes"]:
         if "ont_samplesheet" in config["txomes"][txome]:
@@ -330,7 +354,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.final_map_qc_LRS.output,  # TODO: update this with last rule in this part of pipeline
+                rules.normalization_wgt_avg.output,  # TODO: update this with last rule in this part of pipeline
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
