@@ -1,4 +1,3 @@
-# TODO sed to change those few lines in scripts 8 and 10
 rule download_line_expresssion_lrs:
     output:
         multiext(
@@ -348,7 +347,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.normalization_wgt_avg.output,  # TODO: update this with last rule in this part of pipeline
+                rules.normalization_wgt_avg.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
