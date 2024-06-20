@@ -203,7 +203,6 @@ rule map_qc_LRS:
 
 
 ### after this we need a new parameter: active, inactive, or ORF2. Moving forwards with active for now for now
-### I think this will not work because the OG authors had no idea how relative variables worked
 rule read_filter:  # TODO turn every instance of "active" into a wc
     input:
         step5=rules.map_qc_LRS.output,
@@ -267,6 +266,60 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
         """
 
 
+# skipping step 7
+
+
+rule L1_loci_filter:
+    input:
+        step6=rules.read_filter.output,
+        script=rules.download_line_expresssion_lrs.output[7],
+    output:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_consistent_passed_regions.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_threshold_passed_regions.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.sorted.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/raw_coverage_values_mean.txt",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/filtered_coverage_values_mean.txt",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/active_coverage_for_weighted_avg.bed",
+    conda:
+        "line_expression_lrs.yaml"
+    log:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/log/L1_loci_filter.log",
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+        L1_ref_type="active",
+    shell:
+        """
+        logfile="../{params.sample}/log/L1_loci_filter.log"
+
+        cd results/LINE-Expression-LRS/scripts
+        ./$(basename {input.script}) {params.sample} {params.L1_ref_type} > $logfile 2>&1
+        """
+
+
+rule final_map_qc_LRS:
+    input:
+        step8=rules.L1_loci_filter.output,
+        bam_input=rules.read_filter.output[5],
+    output:
+        directory(
+            "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}"
+        ),
+    conda:
+        "line_expression_lrs.yaml"
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+    log:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/log/09_map_qc_LRS.log",
+    shell:  # TODO add threads
+        """
+        logfile="../../../log/09_map_qc_LRS.log"
+
+        cd results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/active/read_filter/
+        longreadsum bam -i $(basename {input.bam_input}) -o {params.sample} > $logfile 2>&1
+        """
+
+
 def get_lrs_output(wc):
     for txome in config["txomes"]:
         if "ont_samplesheet" in config["txomes"][txome]:
@@ -277,7 +330,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.read_filter.output,  # TODO: update this with last rule in this part of pipeline
+                rules.final_map_qc_LRS.output,  # TODO: update this with last rule in this part of pipeline
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
