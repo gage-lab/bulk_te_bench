@@ -209,23 +209,61 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
         step5=rules.map_qc_LRS.output,
         script=rules.download_line_expresssion_lrs.output[5],
     output:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/{sample}_{libtype}_read_filter_passed.bam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/{sample}_{libtype}_read_filter_passed.sorted.bam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/{sample}_{libtype}_read_filter_passed.sorted.bam.bai",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/{sample}_{libtype}_bedgraph.bg",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/{sample}_{libtype}_bedgraph_clean.bg",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/{sample}_{libtype}_bedgraph_sorted.bg",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_clean.bg",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_sorted.bg",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph.bg",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_L1_regions_reads.bam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.bam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam.bai",
     conda:
         "line_expression_lrs.yaml"
     params:
         sample=lambda wc: wc.sample + "_" + wc.libtype,
-        l1_ref_type="active",
     log:
-        "../{sample}_{libtype}/log/active_map_qc_LRS.log",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/log/read_filter.log",
     shell:
         """
-        cd results/LINE-Expression-LRS/scripts
-        ./$(basename {input.script}) {params.sample} active > {log} 2>&1
+        logfile="../../../log/read_filter.log"
+        sample_name={params.sample}
+        L1_ref_type="active"
+
+        echo "Read Filter on the $L1_ref_type Reference L1 Regions" > {log} 2>&1
+
+        L1_ref_input="../../../../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed"
+        sample_bam_input="../../../../${{sample_name}}/c_hg38_mapping_LRS/${{sample_name}}_hg38_mapped.sorted_position.bam"
+
+        cd results/LINE-Expression-LRS/${{sample_name}}/d_LINE_quantification/
+
+        mkdir -p $L1_ref_type; cd $L1_ref_type
+        mkdir -p "read_filter"; cd "read_filter"
+
+        # Output Files
+        L1_regions_reads=${{sample_name}}_L1_regions_reads.bam
+        echo "Generating filtered BAM file with reads only located within the L1 reference regions..." >> $logfile 2>&1
+        samtools view -b -L "$L1_ref_input" -o "$L1_regions_reads" "$sample_bam_input"
+
+        read_filter_bam=${{sample_name}}_read_filter_passed.bam
+        echo "Removing reads with less than 90% of the read maps to the L1 reference regions" >> $logfile 2>&1
+        bedtools intersect -a "$L1_regions_reads" -b "$L1_regions_reads" -f 0.9 > "$read_filter_bam"
+
+        sorted_read_filter_bam=${{sample_name}}_read_filter_passed.sorted_position.bam
+        echo "Sorting and Indexing the resulting Read Filter BAM file..." >> $logfile 2>&1
+        samtools sort "$read_filter_bam" -o "$sorted_read_filter_bam"
+        samtools index "$sorted_read_filter_bam"
+
+        # Generate the bedgraph for the new BAM file that passed the Read Filter
+        bedgraph_output=${{sample_name}}"_bedgraph.bg"
+        echo "Generating the bedgraph..." >> $logfile 2>&1
+        bedtools genomecov -ibam "$sorted_read_filter_bam" -bga -split > "$bedgraph_output"
+
+        bedgraph_output_clean=${{sample_name}}"_bedgraph_clean.bg"
+        echo "Cleaning the bedgraph..." >> $logfile 2>&1
+        grep -v 'fix\|alt\|random\|[(]\|Un' $bedgraph_output > $bedgraph_output_clean
+
+        bedgraph_sort_output=${{sample_name}}"_bedgraph_sorted.bg"
+        echo "Sorting the cleaned bedgraph..." >> $logfile 2>&1
+        sortBed -i $bedgraph_output_clean > $bedgraph_sort_output
         """
 
 
@@ -239,7 +277,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.map_qc_LRS.output,  # TODO: update this with last rule in this part of pipeline
+                rules.read_filter.output,  # TODO: update this with last rule in this part of pipeline
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
