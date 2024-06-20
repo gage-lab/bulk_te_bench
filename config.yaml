@@ -1,9 +1,9 @@
 # configuration for snakemake workflow
 
 # reference files to use
-genome_fa: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
-rmsk_out: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.out.gz"
-gencode_gtf: "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.basic.annotation.gtf.gz"
+genome_fa: "resources/hg38.fa.gz"
+rmsk_out: "resources/hg38.fa.out.gz"
+gencode_gtf: "resources/gencode.v26.annotation.gtf.gz"
 
 # list of transcriptomes generate and simulate reads from COPIED FROM TEST DATA FOR CLARITY
 txomes:
