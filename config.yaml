@@ -5,20 +5,21 @@ genome_fa: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
 rmsk_out: "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.out.gz"
 gencode_gtf: "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.basic.annotation.gtf.gz"
 
-# list of transcriptomes generate and simulate reads from
+# list of transcriptomes generate and simulate reads from COPIED FROM TEST DATA FOR CLARITY
 txomes:
-  chr22_l1hs_txome:
-    te_subfamilies:
-      - "L1HS"
+  test_txome:
     chrs:
       - "chr22"
+    te_subfamilies:
+      - "L1HS"
+    full_length: False
     simulations:
-      gtex_single_intergenic_l1hs:
-        tx: gtex_sim
+      test:
+        tx: uniform_sim
         te: single_intergenic_l1hs
+        nsamples: 1
         strand_specific: True
         readlen: 100
-        nsamples: 30
 
-gtex_counts: resources/GTEx/bulk-gex_v8_rna-seq_GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct.gz
-gtex_metadata: resources/GTEx/annotations_v8_GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt
+    ont_samplesheet: ont_samplesheet.tsv
+    illumina_samplesheet: illumina_samplesheet.tsv
