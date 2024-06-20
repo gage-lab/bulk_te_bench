@@ -1,6 +1,4 @@
-# TODO - log directory + symlink refs
-
-
+# TODO sed to change those few lines in scripts 8 and 10
 rule download_line_expresssion_lrs:
     output:
         multiext(
@@ -21,6 +19,17 @@ rule download_line_expresssion_lrs:
         git clone https://github.com/WGLab/LINE-Expression-LRS.git results/temp
         mv results/temp/* results/LINE-Expression-LRS
         rm -rf results/temp
+
+
+        # Change variables in 08_L1_loci_filter.sh
+        sed -i 's|sorted_output_bam=../${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/read_filter/${{sample_name}}_read_filter_passed.sorted_position.bam|sorted_output_bam=../read_filter/${{sample_name}}_read_filter_passed.sorted_position.bam|' results/LINE-Expression-LRS/scripts/08_L1_loci_filter.sh
+        sed -i 's|L1_ref_regions=../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed|L1_ref_regions=../../../../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed|' results/LINE-Expression-LRS/scripts/08_L1_loci_filter.sh
+        sed -i 's|bedgraph_sort_output="../github-testing/${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/read_filter/${{sample_name}}_bedgraph_sorted.bg"|bedgraph_sort_output=../read_filter/${{sample_name}}_bedgraph_sorted.bg|' results/LINE-Expression-LRS/scripts/08_L1_loci_filter.sh
+
+        # Change variables in 10_normalization_wgt_avg.sh
+        sed -i 's|qc_report_input=../${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/read_filter/${{sample_name}}/bam_summary.txt|qc_report_input=read_filter/${{sample_name}}/bam_summary.txt|' results/LINE-Expression-LRS/scripts/10_normalization_wgt_avg.sh
+        sed -i 's|input_ref_cov=../${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/L1_loci_filter/${{L1_ref_type}}_coverage_for_weighted_avg.bed|input_ref_cov=L1_loci_filter/${{L1_ref_type}}_coverage_for_weighted_avg.bed|' results/LINE-Expression-LRS/scripts/10_normalization_wgt_avg.sh
+
         """
 
 
@@ -106,6 +115,7 @@ rule L1_detection:
             "out.xm",
             "tbl",
         ),
+        #.cat/.cat.gz too
         "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/{sample}_{libtype}_div10.fa",
         "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/div10_LINEs.out",
         "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/div10_readIDs.txt",
@@ -125,27 +135,11 @@ rule L1_detection:
         """
 
 
-rule symbolic_link_refs:
-    input:
-        copied_ref=rules.move_reference_genome.output[0],
-    output:
-        new_refs=directory("results/LINE-Expression-LRS/{sample}_{libtype}/references/"),
-    params:
-        sample=lambda wc: wc.sample + "_" + wc.libtype,
-    shell:
-        """
-        full_source=$(realpath "results/LINE-Expression-LRS/references")
-        full_target="$(realpath "results/LINE-Expression-LRS/{params.sample}")/references"
-
-        ln -s "$full_source" "$full_target"
-        """
-
-
 rule map_hg38:
     input:
         step3=rules.L1_detection.output[0],
         script=rules.download_line_expresssion_lrs.output[3],
-        ref=rules.symbolic_link_refs.output[0],
+        ref=rules.move_reference_genome.output[0],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sam",
         "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.bam",
