@@ -1,3 +1,28 @@
+
+rule download_line_expresssion_lrs:
+    output:
+        multiext(
+            "resources/LINE-Expression-LRS/scripts/",
+            "01_preprocess_input.sh",
+            "02_preprocess_mapping.sh",
+            "03_L1_detection.sh",
+            "04_map_hg38.sh",
+            "05_map_qc_LRS.sh",
+            "06_read_filter.sh",
+            "07_exon_filter.sh",
+            "08_L1_loci_filter.sh",
+            "09_map_qc_LRS.sh",
+            "10_normalization_wgt_avg.sh",
+        ),
+        "resources/LINE-Expression-LRS/references/custom_LINE_reference.fasta",
+    shell:
+        """
+        git clone https://github.com/WGLab/LINE-Expression-LRS.git resources/temp
+        mv resources/temp/* resources/LINE-Expression-LRS
+        rm -rf resources/temp
+        """
+
+
 # TODO : delete this rule and use ref/gen paths in future rules
 rule move_reference_genome:
     input:
@@ -91,10 +116,11 @@ rule preprocess_input:
 
 rule preprocess_mapping:
     input:
-        step1=rules.preprocess_input.output,
+        fasta1kb=rules.preprocess_input.output.fasta1kb,
+        ref_L1_mega="resources/LINE-Expression-LRS/references/custom_LINE_reference.fasta",
     output:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.sam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.fa",
+        sam="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.sam",
+        fa="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.fa",
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -104,10 +130,15 @@ rule preprocess_mapping:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/preprocess_mapping.log",
     shell:
         """
-        logfile="../{params.sample}/log/preprocess_mapping.log"
+        echo {params.sample} >> {log}
 
-        cd results/LINE-Expression-LRS/scripts
-        ./$(basename {input.script}) {params.sample} > $logfile 2>&1
+        echo "Mapping to Custom LINE Reference Library ..." >> {log}
+
+        minimap2 -ax map-ont {input.ref_L1_mega} {input.fasta1kb} -t {threads} > {output.sam}
+        samtools fasta {output.sam} -F 2308 > {output.fa} 2>{log}
+
+        echo "Mapping to Custom LINE Reference Library complete!" >> {log}
+
         """
 
 
@@ -352,7 +383,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.preprocess_input.output,
+                rules.preprocess_mapping.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
