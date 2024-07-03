@@ -1,40 +1,6 @@
-rule download_line_expresssion_lrs:
-    output:
-        multiext(
-            "results/LINE-Expression-LRS/scripts/",
-            "01_preprocess_input.sh",
-            "02_preprocess_mapping.sh",
-            "03_L1_detection.sh",
-            "04_map_hg38.sh",
-            "05_map_qc_LRS.sh",
-            "06_read_filter.sh",
-            "07_exon_filter.sh",
-            "08_L1_loci_filter.sh",
-            "09_map_qc_LRS.sh",
-            "10_normalization_wgt_avg.sh",
-        ),
-    shell:
-        """
-        git clone https://github.com/WGLab/LINE-Expression-LRS.git results/temp
-        mv results/temp/* results/LINE-Expression-LRS
-        rm -rf results/temp
-
-
-        # Change variables in 08_L1_loci_filter.sh
-        sed -i 's|sorted_output_bam=../${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/read_filter/${{sample_name}}_read_filter_passed.sorted_position.bam|sorted_output_bam=../read_filter/${{sample_name}}_read_filter_passed.sorted_position.bam|' results/LINE-Expression-LRS/scripts/08_L1_loci_filter.sh
-        sed -i 's|L1_ref_regions=../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed|L1_ref_regions=../../../../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed|' results/LINE-Expression-LRS/scripts/08_L1_loci_filter.sh
-        sed -i 's|bedgraph_sort_output="../github-testing/${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/read_filter/${{sample_name}}_bedgraph_sorted.bg"|bedgraph_sort_output=../read_filter/${{sample_name}}_bedgraph_sorted.bg|' results/LINE-Expression-LRS/scripts/08_L1_loci_filter.sh
-
-        # Change variables in 10_normalization_wgt_avg.sh
-        sed -i 's|qc_report_input=../${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/read_filter/${{sample_name}}/bam_summary.txt|qc_report_input=read_filter/${{sample_name}}/bam_summary.txt|' results/LINE-Expression-LRS/scripts/10_normalization_wgt_avg.sh
-        sed -i 's|input_ref_cov=../${{sample_name}}/d_LINE_quantification/${{L1_ref_type}}/L1_loci_filter/${{L1_ref_type}}_coverage_for_weighted_avg.bed|input_ref_cov=L1_loci_filter/${{L1_ref_type}}_coverage_for_weighted_avg.bed|' results/LINE-Expression-LRS/scripts/10_normalization_wgt_avg.sh
-
-        """
-
-
+# TODO : delete this rule and use ref/gen paths in future rules
 rule move_reference_genome:
     input:
-        step0=rules.download_line_expresssion_lrs.output,
         ref=remote_or_local(config["genome_fa"]),
         gen=remote_or_local(config["gencode_gtf"]),
     output:
@@ -60,27 +26,72 @@ def get_lrs_fq(wc):
 rule preprocess_input:
     input:
         fastq=get_lrs_fq,
-        script=rules.download_line_expresssion_lrs.output[0],
     output:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}.fasta",
+        dirA=directory("results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset"),
+        dirB=directory(
+            "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process"
+        ),
+        dirC=directory(
+            "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS"
+        ),
+        dirD=directory(
+            "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification"
+        ),
+        fasta="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}.fasta",
+        fasta1kb="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_cDNA_1kb.fasta",
     conda:
         "line_expression_lrs.yaml"
     params:
         libtype=lambda wc: wc.libtype,
+        filetype="FASTQ",
         sample=lambda wc: wc.sample + "_" + wc.libtype,
     log:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/preprocess_input.log",
     shell:
         """
-        cd results/LINE-Expression-LRS/scripts
-        ./$(basename {input.script}) {params.sample} <(gzip -dc ../../../{input.fastq}) FASTQ {params.libtype}
+        echo "{params.sample}" >> {log}
+
+        # Folder Preparation
+        mkdir -p {output.dirA}
+        mkdir -p {output.dirB}
+        mkdir -p {output.dirC}
+        mkdir -p {output.dirD}
+
+        echo "All folders have been made!" >> {log}
+
+
+        # Input File Preparation
+
+        if [ {params.filetype} == "FASTQ" ]; then
+            echo "Input file is:   FASTQ" >> {log}
+            echo "Converting to FASTA..." >> {log}
+            awk 'NR%4==1{{printf ">%s\\n", substr($0,2)}} NR%4==2{{print}}' {input.fastq} > {output.fasta}
+
+            echo "Filtering out reads less than 1kb..." >> {log}
+            awk '/^>/ {{if (seqlen >= 1000) {{print header; print seq}} header=$0; seq=""; seqlen=0; next}} {{seq = seq $0; seqlen += length($0)}} END {{if (seqlen >= 1000) {{print header; print seq}}}}' {output.fasta} > {output.fasta1kb} # IDEALLY THIS OUTPUTS A TEMP/INTERM FILE WITH DIFF NAME
+        fi
+
+        # RNA to cDNA Conversion
+        # If input file is RNA, convert to cDNA
+
+        if [ {params.libtype} == "RNA" ]; then
+            echo "Input file is:  RNA"  >> {log}
+            echo " Converting to cDNA..."  >> {log}
+            perl -pe 'tr/uU/tT/ unless />/' < {output.fasta1kb} > {output.fasta1kb} # HERE IS WHERE THE FILE IS ADJUSTED
+        fi
+
+        if [ {params.libtype} == "DNA" ]; then
+            echo "Input file is:  DNA"  >> {log}
+            #mv {output.fasta1kb} {output.fasta1kb} # OR HERE IS WHERE THE FILE IS RENAMED
+        fi
+        echo "Preprocessing complete!"  >> {log}
+        echo""  >> {log}
         """
 
 
 rule preprocess_mapping:
     input:
         step1=rules.preprocess_input.output,
-        script=rules.download_line_expresssion_lrs.output[1],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.sam",
         "results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.fa",
@@ -103,7 +114,6 @@ rule preprocess_mapping:
 rule L1_detection:
     input:
         step2=rules.preprocess_mapping.output[1],
-        script=rules.download_line_expresssion_lrs.output[2],
     output:
         multiext(
             "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/{sample}_{libtype}_mapped_cDNA_1kb.fa.",
@@ -137,8 +147,6 @@ rule L1_detection:
 rule map_hg38:
     input:
         step3=rules.L1_detection.output[0],
-        script=rules.download_line_expresssion_lrs.output[3],
-        ref=rules.move_reference_genome.output[0],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sam",
         "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.bam",
@@ -199,7 +207,6 @@ rule map_qc_LRS:
 rule read_filter:  # TODO turn every instance of "active" into a wc
     input:
         step5=rules.map_qc_LRS.output,
-        script=rules.download_line_expresssion_lrs.output[5],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_clean.bg",
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_sorted.bg",
@@ -265,7 +272,6 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
 rule L1_loci_filter:
     input:
         step6=rules.read_filter.output,
-        script=rules.download_line_expresssion_lrs.output[7],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_consistent_passed_regions.bed",
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.bed",
@@ -316,7 +322,6 @@ rule final_map_qc_LRS:
 rule normalization_wgt_avg:
     input:
         step9=rules.final_map_qc_LRS.output,
-        script=rules.download_line_expresssion_lrs.output[9],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/normalized_active_regions.bed",
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/coverage_weighted_avg.bed",
@@ -347,7 +352,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.normalization_wgt_avg.output,
+                rules.preprocess_input.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
