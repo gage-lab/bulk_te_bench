@@ -90,10 +90,12 @@ rule preprocess_input:
         if [ {params.filetype} == "FASTQ" ]; then
             echo "Input file is:   FASTQ" >> {log}
             echo "Converting to FASTA..." >> {log}
-            awk 'NR%4==1{{printf ">%s\\n", substr($0,2)}} NR%4==2{{print}}' {input.fastq} > {output.fasta}
+            zcat {input.fastq} | awk 'NR%4==1{{printf ">%s\\n", substr($0,2)}} NR%4==2{{print}}' > {output.fasta} #TODO what if not gzipped
+
 
             echo "Filtering out reads less than 1kb..." >> {log}
-            awk '/^>/ {{if (seqlen >= 1000) {{print header; print seq}} header=$0; seq=""; seqlen=0; next}} {{seq = seq $0; seqlen += length($0)}} END {{if (seqlen >= 1000) {{print header; print seq}}}}' {output.fasta} > {output.fasta1kb} # IDEALLY THIS OUTPUTS A TEMP/INTERM FILE WITH DIFF NAME
+            awk '/^>/ {{if (seqlen >= 1000) {{print header; print seq}} header=$0; seq=""; seqlen=0; next}} {{seq = seq $0; seqlen += length($0)}} END {{if (seqlen >= 1000) {{print header; print seq}}}}' {input.fastq} > {output.fasta1kb} # IDEALLY THIS OUTPUTS A TEMP/INTERM FILE WITH DIFF NAME
+
         fi
 
         # RNA to cDNA Conversion
