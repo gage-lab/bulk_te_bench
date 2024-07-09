@@ -1,2 +1,2 @@
 sample	libtype	fq
-a	DNA	ngs-test-data/longrnaseq/ONT_cDNA/chr22_SGNex_MCF7_directcDNA_replicate3_run3.fastq.gz
+mcf7_33	DNA	ngs-test-data/longrnaseq/ONT_cDNA/SGNex_MCF7_directcDNA_replicate3_run3.fastq.gz

@@ -15,6 +15,7 @@ rule download_line_expresssion_lrs:
             "10_normalization_wgt_avg.sh",
         ),
         "resources/LINE-Expression-LRS/references/custom_LINE_reference.fasta",
+        "resources/LINE-Expression-LRS/references/L1Base2_filtered/active_filtered.bed",
     shell:
         """
         git clone https://github.com/WGLab/LINE-Expression-LRS.git resources/temp
@@ -206,8 +207,7 @@ rule L1_detection:
 
 rule map_hg38:
     input:
-        step3=rules.L1_detection.output[0],
-        fasta_input=rules.L1_detection.output[7],
+        fasta_input=rules.L1_detection.output[6],
         ref=remote_or_local(config["genome_fa"]),
         gen=remote_or_local(config["gencode_gtf"]),
     output:
@@ -250,12 +250,6 @@ rule map_qc_LRS:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/map_qc_LRS.log",
     shell:  # TODO add threads
         """
-        logfile="../log/map_qc_LRS.log"
-
-        cd results/LINE-Expression-LRS/{params.sample}/c_hg38_mapping_LRS/
-        longreadsum bam -i $(basename {input.bam_input}) -o {params.sample} > $logfile 2>&1
-
-        #TODO delete everything above
         longreadsum bam -i {input.bam_input} -o {output[0]} > {log} 2>&1
 
         """
@@ -265,62 +259,55 @@ rule map_qc_LRS:
 rule read_filter:  # TODO turn every instance of "active" into a wc
     input:
         step5=rules.map_qc_LRS.output,
+        L1_ref_input="resources/LINE-Expression-LRS/references/L1Base2_filtered/active_filtered.bed",
+        sample_bam_input=rules.map_hg38.output.sorted_bam,
     output:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_clean.bg",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_sorted.bg",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph.bg",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_L1_regions_reads.bam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.bam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam.bai",
+        bedgraph_output_clean="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_clean.bg",
+        bedgraph_sort_output="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_sorted.bg",
+        bedgraph_output="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph.bg",
+        L1_regions_reads="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_L1_regions_reads.bam",
+        read_filter_bam="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.bam",
+        sorted_read_filter_bam="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam",
+        index="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam.bai",
     conda:
         "line_expression_lrs.yaml"
     params:
         sample=lambda wc: wc.sample + "_" + wc.libtype,
+        L1_ref_type="active",
     log:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/read_filter.log",
     shell:
         """
-        logfile="../../../log/read_filter.log"
-        sample_name={params.sample}
-        L1_ref_type="active"
+        echo "Read Filter on the {params.L1_ref_type} Reference L1 Regions" > {log} 2>&1
 
-        echo "Read Filter on the $L1_ref_type Reference L1 Regions" > {log} 2>&1
-
-        #L1_ref_input="../../../../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed"
-        L1_ref_input="../../../../../../resources/LINE-Expression-LRS/references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed"
-        sample_bam_input="../../../../${{sample_name}}/c_hg38_mapping_LRS/${{sample_name}}_hg38_mapped.sorted_position.bam"
-
-        cd results/LINE-Expression-LRS/${{sample_name}}/d_LINE_quantification/
-
-        mkdir -p $L1_ref_type; cd $L1_ref_type
-        mkdir -p "read_filter"; cd "read_filter"
+        mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/{params.L1_ref_type}
+        mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/{params.L1_ref_type}/read_filter
 
         # Output Files
-        L1_regions_reads=${{sample_name}}_L1_regions_reads.bam
-        echo "Generating filtered BAM file with reads only located within the L1 reference regions..." >> $logfile 2>&1
-        samtools view -b -L "$L1_ref_input" -o "$L1_regions_reads" "$sample_bam_input"
+        L1_regions_reads={output.L1_regions_reads}
+        echo "Generating filtered BAM file with reads only located within the L1 reference regions..." >> {log} 2>&1
+        samtools view -b -L {input.L1_ref_input} -o "$L1_regions_reads" {input.sample_bam_input}
 
-        read_filter_bam=${{sample_name}}_read_filter_passed.bam
-        echo "Removing reads with less than 90% of the read maps to the L1 reference regions" >> $logfile 2>&1
+        read_filter_bam={output.read_filter_bam}
+        echo "Removing reads with less than 90% of the read maps to the L1 reference regions" >> {log} 2>&1
         bedtools intersect -a "$L1_regions_reads" -b "$L1_regions_reads" -f 0.9 > "$read_filter_bam"
 
-        sorted_read_filter_bam=${{sample_name}}_read_filter_passed.sorted_position.bam
-        echo "Sorting and Indexing the resulting Read Filter BAM file..." >> $logfile 2>&1
+        sorted_read_filter_bam={output.sorted_read_filter_bam}
+        echo "Sorting and Indexing the resulting Read Filter BAM file..." >> {log} 2>&1
         samtools sort "$read_filter_bam" -o "$sorted_read_filter_bam"
         samtools index "$sorted_read_filter_bam"
 
         # Generate the bedgraph for the new BAM file that passed the Read Filter
-        bedgraph_output=${{sample_name}}"_bedgraph.bg"
-        echo "Generating the bedgraph..." >> $logfile 2>&1
+        bedgraph_output={output.bedgraph_output}
+        echo "Generating the bedgraph..." >> {log} 2>&1
         bedtools genomecov -ibam "$sorted_read_filter_bam" -bga -split > "$bedgraph_output"
 
-        bedgraph_output_clean=${{sample_name}}"_bedgraph_clean.bg"
-        echo "Cleaning the bedgraph..." >> $logfile 2>&1
+        bedgraph_output_clean={output.bedgraph_output_clean}
+        echo "Cleaning the bedgraph..." >> {log} 2>&1
         grep -v 'fix\|alt\|random\|[(]\|Un' $bedgraph_output > $bedgraph_output_clean
 
-        bedgraph_sort_output=${{sample_name}}"_bedgraph_sorted.bg"
-        echo "Sorting the cleaned bedgraph..." >> $logfile 2>&1
+        bedgraph_sort_output={output.bedgraph_sort_output}
+        echo "Sorting the cleaned bedgraph..." >> {log} 2>&1
         sortBed -i $bedgraph_output_clean > $bedgraph_sort_output
         """
 
@@ -328,9 +315,31 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
 # skipping step 7
 
 
+rule final_map_qc_LRS:
+    input:
+        bam_input=rules.read_filter.output.sorted_read_filter_bam,
+    output:
+        directory(
+            "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}"
+        ),
+        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}/bam_summary.txt",
+    conda:
+        "line_expression_lrs.yaml"
+    params:
+        sample=lambda wc: wc.sample + "_" + wc.libtype,
+    log:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/log/final_map_qc_LRS.log",
+    shell:  # TODO add threads
+        """
+        longreadsum bam -i {input.bam_input} -o {output[0]} > {log} 2>&1
+        """
+
+
 rule L1_loci_filter:
     input:
-        step6=rules.read_filter.output,
+        sorted_output_bam=rules.read_filter.output.sorted_read_filter_bam,
+        bedgraph_sort_output=rules.read_filter.output.bedgraph_sort_output,
+        L1_ref_regions="resources/LINE-Expression-LRS/references/L1Base2_filtered/active_filtered.bed",
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_consistent_passed_regions.bed",
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.bed",
@@ -348,39 +357,235 @@ rule L1_loci_filter:
         L1_ref_type="active",
     shell:
         """
-        logfile="../{params.sample}/log/L1_loci_filter.log"
+        echo "L1 Loci Filter on the {params.L1_ref_type} Reference L1 Regions" >> {log}
 
-        cd results/LINE-Expression-LRS/scripts
-        ./$(basename {input.script}) {params.sample} {params.L1_ref_type} > $logfile 2>&1
-        """
+        sorted_output_bam={input.sorted_output_bam}
+        L1_ref_regions={input.L1_ref_regions}
+        bedgraph_sort_output={input.bedgraph_sort_output}
+
+        mkdir -p "results/LINE-Expression-LRS/a_DNA/d_LINE_quantification/active/L1_loci_filter"
 
 
-rule final_map_qc_LRS:
-    input:
-        step8=rules.L1_loci_filter.output,
-        bam_input=rules.read_filter.output[5],
-    output:
-        directory(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}"
-        ),
-    conda:
-        "line_expression_lrs.yaml"
-    params:
-        sample=lambda wc: wc.sample + "_" + wc.libtype,
-    log:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/log/09_map_qc_LRS.log",
-    shell:  # TODO add threads
-        """
-        logfile="../../../log/09_map_qc_LRS.log"
+        ###########
+        # Check 1 #
+        ###########
+        # Checking the read start or end positions (taking into account strandness) and filtering regions with inconsistent read start positions
+        echo "Checking the read start or end positions (taking into account strandness) and filtering regions with inconsistent read start positions" >> {log}
 
-        cd results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/active/read_filter/
-        longreadsum bam -i $(basename {input.bam_input}) -o {params.sample} > $logfile 2>&1
+        # Set the output file paths
+        CONSISTENT_REGIONS_FILE={output[0]}
+
+        # Create the output files (or clear their contents if they already exist)
+        > "$CONSISTENT_REGIONS_FILE"
+
+        # Read from the original reference regions file ($OG_REF_REGIONS) instead
+        while IFS=$'\t' read -r chrom start end name score strand; do
+            TEMP_FILE=$(mktemp)
+            samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> {log}
+
+            # Check if the temporary file is empty
+            if [ ! -s "$TEMP_FILE" ]; then
+                continue
+            fi
+
+            # Determine whether to check starting position or end position based on strand
+            if [[ "$strand" == "+" ]]; then
+                position_col=2
+                position_label="start"
+            else
+                position_col=3
+                position_label="end"
+            fi
+
+            # Extract the end positions of the reads within the region
+            end_positions=$(awk -v pos_col="$position_col" '{{print $pos_col}}' "$TEMP_FILE")
+
+            # Check if end positions of reads are consistent within 100 bps of each other
+            consistent_count=$(echo "$end_positions" | awk -v diff_limit=100 '{{
+                prev_pos=0;
+                count=0;
+                for (i=1; i<=NF; i++) {{
+                    if (prev_pos != 0 && ($i - prev_pos) > diff_limit) {{
+                        exit 1;
+                    }}
+                    prev_pos = $i;
+                    count++;
+                }}
+            }}') >> {log}
+
+            if [ -z "$consistent_count" ]; then
+                # Output the region to the consistent regions file
+                echo -e "$chrom\t$start\t$end\t$name\t$score\t$strand" >> "$CONSISTENT_REGIONS_FILE"
+            fi
+
+            # Remove the temporary file
+            rm "$TEMP_FILE"
+
+        done < "$L1_ref_regions"
+
+        echo "Finished Check #1" >> {log}
+
+
+        ###########
+        # Check 2 #
+        ###########
+        echo "Checking if the starting position falls within the 1.5kb window between the average consistent starting position and the reference starting position (taking into account strandness)." >> {log}
+
+
+        # Set the output file paths
+        OUTPUT_FILE_threshold={output[2]}
+        UNDER1500_FILE={output[1]}
+
+
+        # Create the output files (or clear their contents if they already exist)
+        > "$OUTPUT_FILE_threshold"
+        > "$UNDER1500_FILE"
+
+        # Process positive strand regions
+        awk '$6 == "+" {{print}}' "$L1_ref_regions" | while IFS=$'\t' read -r chrom start end name score strand; do
+            TEMP_FILE=$(mktemp)
+            samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> {log}
+
+            # Check if the temporary file is empty
+            if [ ! -s "$TEMP_FILE" ]; then
+                continue
+            fi
+
+            position_col=2
+            position_label="start"
+
+            # Extract the positions of the reads within the region
+            positions=$(cut -f "$position_col" "$TEMP_FILE")
+
+            # Calculate the differences
+            differences=()
+            for pos in $positions; do
+                diff=$((pos - start))
+                differences+=("$diff")
+            done
+
+            # Find the mode of the differences
+            mode_diff=$(printf '%s\n' "${{differences[@]}}" | awk '{{a[$1]++}}END{{for(i in a){{if(a[i]>max){{max=a[i];n=i}}}}}}END{{print n}}')
+
+            # Check if the mode is negative and make it positive
+            if [ $mode_diff -lt 0 ]; then
+                mode_diff=$((-$mode_diff))
+            fi
+
+            # Check if the mode difference is below 1500
+            if [ $mode_diff -lt 1500 ]; then
+                echo "Region: ${{chrom}}_${{start}}_${{end}} (Strand: $strand)" >> {log}
+                echo "Mode Difference: $mode_diff" >> {log}
+
+                # Append the region to the under 1500 file
+                echo -e "${{chrom}}\t${{start}}\t${{end}}\t${{name}}\t${{score}}\t${{strand}}" >> "$UNDER1500_FILE"
+            fi
+
+            # Append the extracted reads to the output file
+            cat "$TEMP_FILE" >> "$OUTPUT_FILE_threshold"
+
+            # Remove the temporary file
+            rm "$TEMP_FILE"
+
+        done
+
+        # Process negative strand regions
+        # the input bam file for this part is under the variable:  $SORTED_OUTPUT_BAM
+        # the input reference regions are under $OG_REF_REGIONS
+
+
+        awk '$6 == "-" {{print}}' "$L1_ref_regions" | while IFS=$'\t' read -r chrom start end name score strand; do
+            TEMP_FILE=$(mktemp)
+            samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> {log}
+
+            # Check if the temporary file is empty
+            if [ ! -s "$TEMP_FILE" ]; then
+                continue
+            fi
+
+            position_col=3
+            position_label="end"
+
+            # Extract the positions of the reads within the region
+            positions=$(cut -f "$position_col" "$TEMP_FILE")
+
+            # Perform your analysis on the read positions here
+            # Replace the following echo statements with your desired logic
+
+            # Calculate the differences
+            differences=()
+            for pos in $positions; do
+                diff=$((end - pos))
+                differences+=("$diff")
+            done
+
+            # Find the mode of the differences
+            mode_diff=$(printf '%s\n' "${{differences[@]}}" | awk '{{a[$1]++}}END{{for(i in a){{if(a[i]>max){{max=a[i];n=i}}}}}}END{{print n}}')
+
+            # Check if the mode is negative and make it positive
+            if [ $mode_diff -lt 0 ]; then
+                mode_diff=$((-$mode_diff))
+            fi
+
+            # Check if the mode difference is below 1500
+            if [ $mode_diff -lt 1500 ]; then
+                echo "Region: ${{chrom}}_${{start}}_${{end}} (Strand: $strand)" >> {log}
+                echo "Mode Difference: $mode_diff" >> {log}
+
+                # Append the region to the under 1500 file
+                echo -e "${{chrom}}\t${{start}}\t${{end}}\t${{name}}\t${{score}}\t${{strand}}" >> "$UNDER1500_FILE"
+            fi
+
+            # Append the extracted reads to the output file
+            cat "$TEMP_FILE" >> "$OUTPUT_FILE_threshold"
+
+            # Remove the temporary file
+            rm "$TEMP_FILE"
+
+        done
+
+
+
+        # sort the regions to look over
+        coverage_regions={output[3]}
+        bedtools sort -i $UNDER1500_FILE > $coverage_regions
+
+        echo "Finished Check #2" >> {log}
+
+
+        ###########
+        # Check 3 #
+        ###########
+        echo "Calculate coverage over the remaining L1 regions and filter those with less than 2 reads" >> {log}
+
+
+        coverage_output_mean={output[4]}
+        bedtools map -a $coverage_regions -b $bedgraph_sort_output -c 4 -o mean -null 0 > $coverage_output_mean 2> {log}
+        echo "calculated coverage; by MEAN" >> {log}
+
+        # Filter regions with a value less than 3 in the last column
+        filtered_coverage_output_mean={output[5]}
+        awk '$NF >= 3' $coverage_output_mean > $filtered_coverage_output_mean
+        echo "Filtered regions with less than 2 reads. " >> {log}
+
+
+        # Replace regions with less than 2 reads with 0
+        FINAL_COV_OUTPUT={output[6]}
+
+        if [[ -s $filtered_coverage_output_mean ]]; then
+            awk 'NR==FNR{{regions[$1,$2,$3]=$0; next}} {{if (($1,$2,$3) in regions) print regions[$1,$2,$3]; else print $0}}' $filtered_coverage_output_mean $OG_REF_REGIONS > $FINAL_COV_OUTPUT
+        else
+            cp $L1_ref_regions $FINAL_COV_OUTPUT
+        fi
+
+        echo "Calculated the {params.L1_ref_type} regions coverage values" >> {log}
         """
 
 
 rule normalization_wgt_avg:
     input:
-        step9=rules.final_map_qc_LRS.output,
+        summary=rules.final_map_qc_LRS.output[1],
+        input_ref_cov=rules.L1_loci_filter.output[6],
     output:
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/normalized_active_regions.bed",
         "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/coverage_weighted_avg.bed",
@@ -393,11 +598,59 @@ rule normalization_wgt_avg:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/normalization_wgt_avg.log",
     shell:
         """
-        logfile="../{params.sample}/log/normalization_wgt_avg.log"
+        echo "Normalization by Total Number of Reads..." >> {log}
+        qc_report_input={input.summary}
 
-        cd results/LINE-Expression-LRS/scripts
-        ./$(basename {input.script}) {params.sample} {params.L1_ref_type} > $logfile 2>&1
+        # function to calculate coverage
 
+        # Extract the number of read value from summary.txt
+        value=$(awk -F '\t' 'NR==1 {{print $2}}' "$qc_report_input")
+
+        #value=$(awk '{{print $5}}' $qc_report_input)
+        echo "Number of reads: $value" >> {log}
+
+        input_ref_cov={input.input_ref_cov}
+
+
+        # output files
+        normalized_ref_regions={output[0]}
+
+        awk -v divisor="$value" -v OFS="\t" '{{$NF = (divisor != 0) ? $NF / divisor : 0; print}}' "$input_ref_cov" > "$normalized_ref_regions"
+
+        echo "Normalization Complete!" >> {log}
+
+
+        # Part 2: Weighted Average Calculation
+        echo "Weighted Average Calculation..." >> {log}
+
+        # output file
+        weighted_average_cov={output[1]}
+
+
+        weighted_sum=0
+        total_weight=0
+
+        while IFS=$'\t' read -r line || [[ -n "$line" ]]; do
+            elements=($line)
+            start=${{elements[1]}}
+            end=${{elements[2]}}
+            coverage=$(echo "${{elements[-1]}}" | awk '{{print $NF}}')
+            region_size=$((end - start + 1))
+            weighted_sum=$(awk "BEGIN {{print $weighted_sum + ($coverage * $region_size)}}")
+            total_weight=$((total_weight + region_size))
+        done < "$input_ref_cov"
+
+        if [ "$total_weight" -ne 0 ]; then
+            weighted_average=$(awk "BEGIN {{print $weighted_sum / $total_weight}}")
+        else
+            weighted_average=0
+        fi
+
+        # Write the Sample Name and Coverage Values to the new file
+        echo -e "Sample Name\tWeighted Average" > "$weighted_average_cov"
+        echo -e "{params.sample}\t$weighted_average" >> "$weighted_average_cov"
+
+        echo "Calculations for {params.sample}, over the ${params.L1_ref_type} regions is complete!" >> {log}
         """
 
 
@@ -411,7 +664,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.L1_detection.output,
+                rules.normalization_wgt_avg.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
