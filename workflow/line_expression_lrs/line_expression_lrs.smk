@@ -52,16 +52,6 @@ rule preprocess_input:
     input:
         fastq=get_lrs_fq,
     output:
-        dirA=directory("results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset"),
-        dirB=directory(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process"
-        ),
-        dirC=directory(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS"
-        ),
-        dirD=directory(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification"
-        ),
         fasta="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}.fasta",
         fasta1kb="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_cDNA_1kb.fasta",
     conda:
@@ -77,10 +67,10 @@ rule preprocess_input:
         echo "{params.sample}" >> {log}
 
         # Folder Preparation
-        mkdir -p {output.dirA}
-        mkdir -p {output.dirB}
-        mkdir -p {output.dirC}
-        mkdir -p {output.dirD}
+        mkdir -p results/LINE-Expression-LRS/{params.sample}/a_dataset
+        mkdir -p results/LINE-Expression-LRS/{params.sample}/b_repeat_masker_process
+        mkdir -p results/LINE-Expression-LRS/{params.sample}/c_hg38_mapping_LRS
+        mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification
 
         echo "All folders have been made!" >> {log}
 
@@ -94,7 +84,7 @@ rule preprocess_input:
 
 
             echo "Filtering out reads less than 1kb..." >> {log}
-            awk '/^>/ {{if (seqlen >= 1000) {{print header; print seq}} header=$0; seq=""; seqlen=0; next}} {{seq = seq $0; seqlen += length($0)}} END {{if (seqlen >= 1000) {{print header; print seq}}}}' {input.fastq} > {output.fasta1kb} # IDEALLY THIS OUTPUTS A TEMP/INTERM FILE WITH DIFF NAME
+            awk '/^>/ {{if (seqlen >= 1000) {{print header; print seq}} header=$0; seq=""; seqlen=0; next}} {{seq = seq $0; seqlen += length($0)}} END {{if (seqlen >= 1000) {{print header; print seq}}}}' {output.fasta} > {output.fasta1kb} # IDEALLY THIS OUTPUTS A TEMP/INTERM FILE WITH DIFF NAME
 
         fi
 
@@ -146,7 +136,8 @@ rule preprocess_mapping:
 
 rule L1_detection:
     input:
-        step2=rules.preprocess_mapping.output[1],
+        input_file=rules.preprocess_mapping.output.fa,
+        fasta1kb=rules.preprocess_input.output.fasta1kb,
     output:
         multiext(
             "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/{sample}_{libtype}_mapped_cDNA_1kb.fa.",
@@ -170,21 +161,60 @@ rule L1_detection:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/L1_detection.log",
     shell:
         """
-        logfile="../{params.sample}/log/L1_detection.log"
 
-        cd results/LINE-Expression-LRS/scripts
-        ./$(basename {input.script}) {params.sample} > $logfile 2>&1
+        echo "Running RepeatMasker..." >> {log} 2>&1
+        RepeatMasker -pa 6 -dir "results/LINE-Expression-LRS/{params.sample}/b_repeat_masker_process" -nolow -norna -div 10 -species human -no_is -a -u -xsmall -xm {input.input_file} >> {log} 2>&1
+
+        echo "Finished RepeatMasker!" >> {log} 2>&1
+
+        # Post-RepeatMasker Filtering by 10% Divergence
+
+        RM_input_file={output[3]}
+        output_file={output[7]}
+
+        readIDs_lines=()
+
+        while read -r line; do
+            if [[ $line == *"LINE/L1"* ]]; then
+                fields=($line)
+
+                if (( $(echo "${{fields[1]}} <= 10" | bc -l) )); then
+                    echo "$line" >> "$output_file"
+                    readIDs_lines+=("${{fields[4]}}")
+                fi
+            fi
+        done < "$RM_input_file"
+
+
+
+        # Get ReadIDs and Generate the new FASTA file of these ReadIDs
+        read_id_file={output[8]}
+
+        echo "Gathering Final ReadIDs of less than 10% diverged LINE/L1 elements..." >> {log} 2>&1
+
+        for item in "${{readIDs_lines[@]}}"; do
+            echo "$item" >> "$read_id_file"
+        done
+
+
+        seqtk subseq {input.fasta1kb} $read_id_file > {output[6]}
+
+        echo "Completed processing RepeatMasker output and generated a new FASTA file of reads with less than 10% diverged LINE/L1 elements!" >> {log} 2>&1
+
         """
 
 
 rule map_hg38:
     input:
         step3=rules.L1_detection.output[0],
+        fasta_input=rules.L1_detection.output[7],
+        ref=remote_or_local(config["genome_fa"]),
+        gen=remote_or_local(config["gencode_gtf"]),
     output:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.bam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam.bai",
+        sam="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sam",
+        bam="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.bam",
+        sorted_bam="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam",
+        index="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam.bai",
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -194,23 +224,14 @@ rule map_hg38:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/map_hg38.log",
     shell:
         """
-        logfile="../log/map_hg38.log"
+        echo "Mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome..." > {log} 2>&1
 
-        cd results/LINE-Expression-LRS/{params.sample}/c_hg38_mapping_LRS/
+        minimap2 -ax splice --junc-bed {input.gen} -uf --secondary=no -k14 -t 8 {input.ref} {input.fasta_input} -o {output.sam} >> {log} 2>&1
+        samtools view -Sb -o {output.bam} {output.sam} >> {log} 2>&1
+        samtools sort {output.bam} -o {output.sorted_bam} >> {log} 2>&1
+        samtools index {output.sorted_bam} >> {log} 2>&1
 
-        FASTA_INPUT="../b_repeat_masker_process/{params.sample}_div10.fa"
-        REF_SPLICE="../../references/gencode.v40.annotation.bed"
-        REF_GENOME38="../../references/hg38.fa"
-
-
-        echo "Mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome..." >> $logfile 2>&1
-
-        minimap2 -ax splice --junc-bed $REF_SPLICE -uf --secondary=no -k14 -t 8 $REF_GENOME38 $FASTA_INPUT -o {params.sample}_hg38_mapped.sam >> $logfile 2>&1
-        samtools view -Sb -o {params.sample}_hg38_mapped.bam {params.sample}_hg38_mapped.sam >> $logfile 2>&1
-        samtools sort {params.sample}_hg38_mapped.bam -o {params.sample}_hg38_mapped.sorted_position.bam >> $logfile 2>&1
-        samtools index {params.sample}_hg38_mapped.sorted_position.bam >> $logfile 2>&1
-
-        echo "Finished mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome" >> $logfile 2>&1
+        echo "Finished mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome" >> {log} 2>&1
         """
 
 
@@ -233,6 +254,10 @@ rule map_qc_LRS:
 
         cd results/LINE-Expression-LRS/{params.sample}/c_hg38_mapping_LRS/
         longreadsum bam -i $(basename {input.bam_input}) -o {params.sample} > $logfile 2>&1
+
+        #TODO delete everything above
+        longreadsum bam -i {input.bam_input} -o {output[0]} > {log} 2>&1
+
         """
 
 
@@ -262,7 +287,8 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
 
         echo "Read Filter on the $L1_ref_type Reference L1 Regions" > {log} 2>&1
 
-        L1_ref_input="../../../../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed"
+        #L1_ref_input="../../../../references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed"
+        L1_ref_input="../../../../../../resources/LINE-Expression-LRS/references/L1Base2_filtered/${{L1_ref_type}}_filtered.bed"
         sample_bam_input="../../../../${{sample_name}}/c_hg38_mapping_LRS/${{sample_name}}_hg38_mapped.sorted_position.bam"
 
         cd results/LINE-Expression-LRS/${{sample_name}}/d_LINE_quantification/
@@ -385,7 +411,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.preprocess_mapping.output,
+                rules.L1_detection.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
