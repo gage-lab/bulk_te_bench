@@ -666,7 +666,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.preprocess_input.output,
+                rules.preprocess_mapping.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
