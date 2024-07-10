@@ -226,10 +226,10 @@ rule map_hg38:
         """
         echo "Mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome..." > {log} 2>&1
 
-        minimap2 -ax splice --junc-bed {input.gen} -uf --secondary=no -k14 -t 8 {input.ref} {input.fasta_input} -o {output.sam} >> {log} 2>&1
-        samtools view -Sb -o {output.bam} {output.sam} >> {log} 2>&1
-        samtools sort {output.bam} -o {output.sorted_bam} >> {log} 2>&1
-        samtools index {output.sorted_bam} >> {log} 2>&1
+        minimap2 -ax splice --junc-bed {input.gen} -uf --secondary=no -k14 -t 8 {input.ref} {input.fasta_input} -o {output.sam}
+        samtools view -Sb -o {output.bam} {output.sam}
+        samtools sort {output.bam} -o {output.sorted_bam}
+        samtools index {output.sorted_bam}
 
         echo "Finished mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome" >> {log} 2>&1
         """
@@ -666,7 +666,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.L1_detection.output,
+                rules.map_hg38.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,

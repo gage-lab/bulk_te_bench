@@ -1,9 +1,9 @@
 # configuration for snakemake workflow
 
 # reference files to use
-genome_fa: resources/gencode.v26.annotation.gtf.gz
+genome_fa: resources/hg38.fa.gz
 rmsk_out: ngs-test-data/scrnaseq_10x_v3/ref/rmsk_chr22.out
-gencode_gtf: resources/hg38.fa.gz
+gencode_gtf: resources/gencode.v26.annotation.gtf.gz
 
 # list of transcriptomes generate and simulate reads from
 txomes:
