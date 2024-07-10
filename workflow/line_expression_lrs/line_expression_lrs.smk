@@ -81,11 +81,11 @@ rule preprocess_input:
         if [ {params.filetype} == "FASTQ" ]; then
             echo "Input file is:   FASTQ" >> {log}
             echo "Converting to FASTA..." >> {log}
-            zcat {input.fastq} | awk 'NR%4==1{{printf ">%s\\n", substr($0,2)}} NR%4==2{{print}}' > {output.fasta} #TODO what if not gzipped
+            seqtk seq -a {input.fastq} > {output.fasta} #check good
 
 
             echo "Filtering out reads less than 1kb..." >> {log}
-            awk '/^>/ {{if (seqlen >= 1000) {{print header; print seq}} header=$0; seq=""; seqlen=0; next}} {{seq = seq $0; seqlen += length($0)}} END {{if (seqlen >= 1000) {{print header; print seq}}}}' {output.fasta} > {output.fasta1kb} # IDEALLY THIS OUTPUTS A TEMP/INTERM FILE WITH DIFF NAME
+            seqtk seq -L 1000 {output.fasta} > {output.fasta1kb} # #TODO: MAKE THIS TEMP OUTPUT
 
         fi
 
@@ -128,7 +128,7 @@ rule preprocess_mapping:
         echo "Mapping to Custom LINE Reference Library ..." >> {log}
 
         minimap2 -ax map-ont {input.ref_L1_mega} {input.fasta1kb} -t {threads} > {output.sam}
-        samtools fasta {output.sam} -F 2308 > {output.fa} 2>{log}
+        samtools fasta {output.sam} -F 2308 -@ {threads} > {output.fa} 2>{log}
 
         echo "Mapping to Custom LINE Reference Library complete!" >> {log}
 
@@ -355,6 +355,8 @@ rule L1_loci_filter:
     params:
         sample=lambda wc: wc.sample + "_" + wc.libtype,
         L1_ref_type="active",
+    # script:
+    #    "L1_loci_filter.sh", #TODO fix this
     shell:
         """
         echo "L1 Loci Filter on the {params.L1_ref_type} Reference L1 Regions" >> {log}
@@ -664,7 +666,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.normalization_wgt_avg.output,
+                rules.preprocess_input.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
