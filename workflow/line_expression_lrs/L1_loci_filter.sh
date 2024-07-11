@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-echo "L1 Loci Filter on the ${params[L1_ref_type]} Reference L1 Regions" >> "${snakemake_snakemake_log}"
+echo "L1 Loci Filter on the ${params[L1_ref_type]} Reference L1 Regions" > "${snakemake_log}"
 
 sorted_output_bam="${snakemake_input[sorted_output_bam]}"
 L1_ref_regions="${snakemake_input[L1_ref_regions]}"
 bedgraph_sort_output="${snakemake_input[bedgraph_sort_output]}"
 
-mkdir -p "results/LINE-Expression-LRS/a_DNA/d_LINE_quantification/active/L1_loci_filter"
+mkdir -p "${snakemake_output[7]}"
 
 
 ###########
@@ -23,7 +24,7 @@ CONSISTENT_REGIONS_FILE="${snakemake_output[0]}"
 
 # Read from the original reference regions file ($OG_REF_REGIONS) instead
 while IFS=$'\t' read -r chrom start end name score strand; do
-    TEMP_FILE="${snakemake_output[7]}"
+    TEMP_FILE=$(mktemp)
     samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> "${snakemake_log}"
 
     # Check if the temporary file is empty
@@ -221,4 +222,4 @@ else
     cp $L1_ref_regions $FINAL_COV_OUTPUT
 fi
 
-echo "Calculated the "${params[L1_ref_type]}" regions coverage values" >> "${snakemake_log}"
+echo "Calculated the ${params[L1_ref_type]} regions coverage values" >> "${snakemake_log}"
