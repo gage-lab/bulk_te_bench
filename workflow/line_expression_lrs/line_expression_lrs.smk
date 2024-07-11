@@ -329,7 +329,7 @@ rule final_map_qc_LRS:
         sample=lambda wc: wc.sample + "_" + wc.libtype,
     log:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/final_map_qc_LRS.log",
-    shell:  # TODO add threads
+    shell:
         """
         longreadsum bam -i {input.bam_input} -o {output[0]} > {log} 2>&1
         """
@@ -652,7 +652,7 @@ rule normalization_wgt_avg:
         echo -e "Sample Name\tWeighted Average" > "$weighted_average_cov"
         echo -e "{params.sample}\t$weighted_average" >> "$weighted_average_cov"
 
-        echo "Calculations for {params.sample}, over the ${params.L1_ref_type} regions is complete!" >> {log}
+        echo "Calculations for {params.sample}, over the {params.L1_ref_type} regions is complete!" >> {log}
         """
 
 
@@ -666,7 +666,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.map_qc_LRS.output,
+                rules.normalization_wgt_avg.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
