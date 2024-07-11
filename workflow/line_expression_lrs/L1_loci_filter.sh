@@ -23,7 +23,7 @@ CONSISTENT_REGIONS_FILE="${snakemake_output[0]}"
 
 # Read from the original reference regions file ($OG_REF_REGIONS) instead
 while IFS=$'\t' read -r chrom start end name score strand; do
-    TEMP_FILE=$(mktemp)
+    TEMP_FILE="${snakemake_output[7]}"
     samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> "${snakemake_log}"
 
     # Check if the temporary file is empty
