@@ -24,21 +24,6 @@ rule download_line_expresssion_lrs:
         """
 
 
-# TODO : delete this rule and use ref/gen paths in future rules
-rule move_reference_genome:
-    input:
-        ref=remote_or_local(config["genome_fa"]),
-        gen=remote_or_local(config["gencode_gtf"]),
-    output:
-        newref="results/LINE-Expression-LRS/references/hg38.fa",  # disclaimer: there is no guarantee these are hg38 and gencode v40
-        newgen="results/LINE-Expression-LRS/references/gencode.v40.annotation.bed",
-    shell:
-        """
-        cp {input.ref} {output.newref}
-        cp {input.gen} {output.newgen}
-        """
-
-
 def get_lrs_fq(wc):
     for txome in config["txomes"]:
         if "ont_samplesheet" in config["txomes"][txome]:
@@ -53,8 +38,8 @@ rule preprocess_input:
     input:
         fastq=get_lrs_fq,
     output:
-        fasta="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}.fasta",
-        fasta1kb="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_cDNA_1kb.fasta",
+        fasta="results/LINE-Expression-LRS/{sample}_{libtype}/reads.fa",
+        fasta1kb="results/LINE-Expression-LRS/{sample}_{libtype}/reads_cDNA_1kb.fa",
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -66,15 +51,6 @@ rule preprocess_input:
     shell:
         """
         echo "{params.sample}" >> {log}
-
-        # Folder Preparation
-        mkdir -p results/LINE-Expression-LRS/{params.sample}/a_dataset
-        mkdir -p results/LINE-Expression-LRS/{params.sample}/b_repeat_masker_process
-        mkdir -p results/LINE-Expression-LRS/{params.sample}/c_hg38_mapping_LRS
-        mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification
-
-        echo "All folders have been made!" >> {log}
-
 
         # Input File Preparation
 
@@ -107,114 +83,95 @@ rule preprocess_input:
         """
 
 
-rule preprocess_mapping:
-    input:
-        fasta1kb=rules.preprocess_input.output.fasta1kb,
-        ref_L1_mega="resources/LINE-Expression-LRS/references/custom_LINE_reference.fasta",
+rule get_l1hs_hmm:
     output:
-        sam="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.sam",
-        fa="results/LINE-Expression-LRS/{sample}_{libtype}/a_dataset/{sample}_{libtype}_mapped_cDNA_1kb.fa",
+        hmm="resources/LINE-Expression-LRS/L1HS_5end.hmm",
+    log:
+        "resources/LINE-Expression-LRS/L1HS_5end_dfam_query.log",
     conda:
         "line_expression_lrs.yaml"
-    params:
-        sample=lambda wc: wc.sample + "_" + wc.libtype,
-    threads: 24
-    log:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/log/preprocess_mapping.log",
     shell:
         """
-        echo {params.sample} >> {log}
-
-        echo "Mapping to Custom LINE Reference Library ..." >> {log}
-
-        minimap2 -ax map-ont {input.ref_L1_mega} {input.fasta1kb} -t {threads} > {output.sam}
-        samtools fasta {output.sam} -F 2308 -@ {threads} > {output.fa} 2>{log}
-
-        echo "Mapping to Custom LINE Reference Library complete!" >> {log}
-
+        curl -s https://dfam.org/api/families/DF000000226/hmm?format=hmm > {output.hmm} 2> {log}
         """
 
 
 rule L1_detection:
     input:
-        input_file=rules.preprocess_mapping.output.fa,
-        fasta1kb=rules.preprocess_input.output.fasta1kb,
+        fa=rules.preprocess_input.output.fasta1kb,
+        lib=rules.get_l1hs_hmm.output.hmm,
     output:
-        multiext(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/{sample}_{libtype}_mapped_cDNA_1kb.fa.",
-            "align",
-            "masked",
-            "ori.out",
-            "out",
-            "out.xm",
-            "tbl",
+        rmsk=multiext(
+            rules.preprocess_input.output.fasta1kb,
+            ".align",
+            ".masked",
+            ".ori.out",
+            ".out",
+            ".out.xm",
+            ".tbl",
         ),
-        #.cat/.cat.gz too
-        "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/{sample}_{libtype}_div10.fa",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/div10_LINEs.out",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/b_repeat_masker_process/div10_readIDs.txt",
+        ids="results/LINE-Expression-LRS/{sample}_{libtype}/l1hs_reads.txt",
+        fa="results/LINE-Expression-LRS/{sample}_{libtype}/l1hs_reads.fa",
     conda:
         "line_expression_lrs.yaml"
     params:
         sample=lambda wc: wc.sample + "_" + wc.libtype,
-    threads: 6
+    threads: 32
     log:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/L1_detection.log",
     shell:
         """
+        exec &>> {log}
 
-        echo "Running RepeatMasker..." >> {log} 2>&1
-        RepeatMasker -pa 6 -dir "results/LINE-Expression-LRS/{params.sample}/b_repeat_masker_process" -nolow -norna -div 10 -species human -no_is -a -u -xsmall -xm {input.input_file} >> {log} 2>&1
+        echo "Running RepeatMasker at $(date)..."
+        ## FLAGS
+        # -div = max divergence
+        # -lib = library of sequences to search for
+        # -no_is = skips bacterial insertion element check
+        # -nolow = does not mask low complexity DNA or simple repeats
+        # -norna = no RNA repeats. When interested in small RNA genes, you should use the -norna option that leaves these sequences unmasked, while still masking SINEs.
+        # -a = shows the alignments in a .align output file
+        # -u = creates an untouched annotation file besides the manipulated file
+        # -xsmall = returns repetitive regions in lowercase (rest capitals) rather than masked
+        # -xm = creates an additional output file in cross_match format (for parsing)
+        # -e hmmer = use HMMER for engine
+        # -s = slow search / -qq = Rush job; about 10% less sensitive,
 
-        echo "Finished RepeatMasker!" >> {log} 2>&1
+        RepeatMasker -pa {threads} -lib {input.lib} -no_is -nolow -norna -a -u -xsmall -xm -div 10 -e hmmer -qq {input.fa}
+
+        echo "Finished RepeatMasker at $(date)!"
 
         # Post-RepeatMasker Filtering by 10% Divergence
-
-        RM_input_file={output[3]}
-        output_file={output[7]}
-
-        readIDs_lines=()
+        echo "Filtering RepeatMasker output by 10% divergence at $(date)..."
+        touch {output.ids}
 
         while read -r line; do
-            if [[ $line == *"LINE/L1"* ]]; then
+            if [[ $line == *"L1HS"* ]]; then
                 fields=($line)
 
+                # TODO: do we need this if statement? Yes bc some are above 10
                 if (( $(echo "${{fields[1]}} <= 10" | bc -l) )); then
-                    echo "$line" >> "$output_file"
-                    readIDs_lines+=("${{fields[4]}}")
+                    echo "${{fields[4]}}" >> {output.ids}
                 fi
             fi
-        done < "$RM_input_file"
+        done < "{output.rmsk[3]}"
 
+        echo "Generating a new FASTA file of reads with less than 10% diverged LINE/L1 elements at $(date)..."
 
+        seqtk subseq {input.fa} {output.ids} > {output.fa}
 
-        # Get ReadIDs and Generate the new FASTA file of these ReadIDs
-        read_id_file={output[8]}
-
-        echo "Gathering Final ReadIDs of less than 10% diverged LINE/L1 elements..." >> {log} 2>&1
-
-        for item in "${{readIDs_lines[@]}}"; do
-            echo "$item" >> "$read_id_file"
-        done
-
-
-        seqtk subseq {input.fasta1kb} $read_id_file > {output[6]}
-
-        echo "Completed processing RepeatMasker output and generated a new FASTA file of reads with less than 10% diverged LINE/L1 elements!" >> {log} 2>&1
-
+        echo "Completed processing RepeatMasker output and generated a new FASTA file of reads with less than 10% diverged LINE/L1 elements!"
         """
 
 
 rule map_hg38:
     input:
-        fasta_input=rules.L1_detection.output[6],
+        fa=rules.L1_detection.output.fa,
         ref=remote_or_local(config["genome_fa"]),
         gen=remote_or_local(config["gencode_gtf"]),
     output:
-        sam="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sam",
-        bam="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.bam",
-        sorted_bam="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam",
-        index="results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}_hg38_mapped.sorted_position.bam.bai",
+        bam="results/LINE-Expression-LRS/{sample}_{libtype}/hg38_mapped.sorted.bam",
+        bai="results/LINE-Expression-LRS/{sample}_{libtype}/hg38_mapped.sorted.bam.bai",
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -224,24 +181,25 @@ rule map_hg38:
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/map_hg38.log",
     shell:
         """
-        echo "Mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome..." > {log} 2>&1
+        exec &>> {log}
 
-        minimap2 -ax splice --junc-bed {input.gen} -uf --secondary=no -k14 -t {threads} {input.ref} {input.fasta_input} -o {output.sam}  >> {log} 2>&1
-        samtools view -Sb -o {output.bam} {output.sam}  >> {log} 2>&1
-        samtools sort {output.bam} -@ {threads} -o {output.sorted_bam}  >> {log} 2>&1
-        samtools index {output.sorted_bam}  >> {log} 2>&1
+        echo "Mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome..."
 
-        echo "Finished mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome" >> {log} 2>&1
+        minimap2 -ax splice --junc-bed {input.gen} -uf --secondary=no -k14 -t {threads} {input.ref} {input.fa} | \
+            samtools view -h -@ {threads} - | \
+            samtools sort -@ {threads} - > {output.bam}
+
+        samtools index {output.bam}
+
+        echo "Finished mapping reads with < 10% LINE/L1 elements to the hg38 Reference Genome"
         """
 
 
 rule map_qc_LRS:
     input:
-        bam_input=rules.map_hg38.output[2],
+        bam_input=rules.map_hg38.output.bam,
     output:
-        directory(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/c_hg38_mapping_LRS/{sample}_{libtype}"
-        ),
+        directory("results/LINE-Expression-LRS/{sample}_{libtype}/hg38_mapping_LRS"),
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -251,24 +209,23 @@ rule map_qc_LRS:
     shell:  # TODO add threads
         """
         longreadsum bam -i {input.bam_input} -o {output[0]} > {log} 2>&1
-
         """
 
 
 ### after this we need a new parameter: active, inactive, or ORF2. Moving forwards with active for now for now
 rule read_filter:  # TODO turn every instance of "active" into a wc
     input:
-        step5=rules.map_qc_LRS.output,
         L1_ref_input="resources/LINE-Expression-LRS/references/L1Base2_filtered/active_filtered.bed",
-        sample_bam_input=rules.map_hg38.output.sorted_bam,
+        bam=rules.map_hg38.output.bam,
+        map_qc_LRS=rules.map_qc_LRS.output[0],
     output:
-        bedgraph_output_clean="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_clean.bg",
-        bedgraph_sort_output="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph_sorted.bg",
-        bedgraph_output="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_bedgraph.bg",
-        L1_regions_reads="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_L1_regions_reads.bam",
-        read_filter_bam="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.bam",
-        sorted_read_filter_bam="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam",
-        index="results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam.bai",
+        bedgraph_output_clean="results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}_bedgraph_clean.bg",
+        bedgraph_sort_output="results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}_bedgraph_sorted.bg",
+        bedgraph_output="results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}_bedgraph.bg",
+        L1_regions_reads="results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}_L1_regions_reads.bam",
+        read_filter_bam="results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}_read_filter_passed.bam",
+        sorted_read_filter_bam="results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam",
+        index="results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}_read_filter_passed.sorted_position.bam.bai",
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -278,36 +235,38 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
         "results/LINE-Expression-LRS/{sample}_{libtype}/log/read_filter.log",
     shell:
         """
-        echo "Read Filter on the {params.L1_ref_type} Reference L1 Regions" > {log} 2>&1
+        exec &>> {log}
+
+        echo "Read Filter on the {params.L1_ref_type} Reference L1 Regions"
 
         mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/{params.L1_ref_type}
         mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/{params.L1_ref_type}/read_filter
 
         # Output Files
         L1_regions_reads={output.L1_regions_reads}
-        echo "Generating filtered BAM file with reads only located within the L1 reference regions..." >> {log} 2>&1
-        samtools view -b -L {input.L1_ref_input} -o "$L1_regions_reads" {input.sample_bam_input}
+        echo "Generating filtered BAM file with reads only located within the L1 reference regions..."
+        samtools view -b -L {input.L1_ref_input} -o "$L1_regions_reads" {input.bam}
 
         read_filter_bam={output.read_filter_bam}
-        echo "Removing reads with less than 90% of the read maps to the L1 reference regions" >> {log} 2>&1
+        echo "Removing reads with less than 90% of the read maps to the L1 reference regions"
         bedtools intersect -a "$L1_regions_reads" -b "$L1_regions_reads" -f 0.9 > "$read_filter_bam"
 
         sorted_read_filter_bam={output.sorted_read_filter_bam}
-        echo "Sorting and Indexing the resulting Read Filter BAM file..." >> {log} 2>&1
+        echo "Sorting and Indexing the resulting Read Filter BAM file..."
         samtools sort "$read_filter_bam" -o "$sorted_read_filter_bam"
         samtools index "$sorted_read_filter_bam"
 
         # Generate the bedgraph for the new BAM file that passed the Read Filter
         bedgraph_output={output.bedgraph_output}
-        echo "Generating the bedgraph..." >> {log} 2>&1
+        echo "Generating the bedgraph..."
         bedtools genomecov -ibam "$sorted_read_filter_bam" -bga -split > "$bedgraph_output"
 
         bedgraph_output_clean={output.bedgraph_output_clean}
-        echo "Cleaning the bedgraph..." >> {log} 2>&1
+        echo "Cleaning the bedgraph..."
         grep -v 'fix\|alt\|random\|[(]\|Un' $bedgraph_output > $bedgraph_output_clean
 
         bedgraph_sort_output={output.bedgraph_sort_output}
-        echo "Sorting the cleaned bedgraph..." >> {log} 2>&1
+        echo "Sorting the cleaned bedgraph..."
         sortBed -i $bedgraph_output_clean > $bedgraph_sort_output
         """
 
@@ -320,9 +279,9 @@ rule final_map_qc_LRS:
         bam_input=rules.read_filter.output.sorted_read_filter_bam,
     output:
         directory(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}"
+            "results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/read_filter_LRS"
         ),
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/read_filter/{sample}_{libtype}/bam_summary.txt",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}/bam_summary.txt",
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -341,16 +300,14 @@ rule L1_loci_filter:
         bedgraph_sort_output=rules.read_filter.output.bedgraph_sort_output,
         L1_ref_regions="resources/LINE-Expression-LRS/references/L1Base2_filtered/active_filtered.bed",
     output:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_consistent_passed_regions.bed",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.bed",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_threshold_passed_regions.bed",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.sorted.bed",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/raw_coverage_values_mean.txt",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/filtered_coverage_values_mean.txt",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter/active_coverage_for_weighted_avg.bed",
-        directory(
-            "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/L1_loci_filter"
-        ),
+        "results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter/{sample}_{libtype}_consistent_passed_regions.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter/{sample}_{libtype}_threshold_passed_regions.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter/{sample}_{libtype}_regions_for_coverage.sorted.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter/raw_coverage_values_mean.txt",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter/filtered_coverage_values_mean.txt",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter/active_coverage_for_weighted_avg.bed",
+        directory("results/LINE-Expression-LRS/{sample}_{libtype}/L1_loci_filter"),
     conda:
         "line_expression_lrs.yaml"
     log:
@@ -367,8 +324,8 @@ rule normalization_wgt_avg:
         summary=rules.final_map_qc_LRS.output[1],
         input_ref_cov=rules.L1_loci_filter.output[6],
     output:
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/normalized_active_regions.bed",
-        "results/LINE-Expression-LRS/{sample}_{libtype}/d_LINE_quantification/active/coverage_weighted_avg.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/normalized_active_regions.bed",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/coverage_weighted_avg.bed",
     conda:
         "line_expression_lrs.yaml"
     params:
@@ -444,7 +401,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.L1_loci_filter.output,
+                rules.normalization_wgt_avg.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,

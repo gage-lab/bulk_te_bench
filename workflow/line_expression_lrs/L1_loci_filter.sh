@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+exec &>>"${snakemake_log}"
 
-echo "L1 Loci Filter on the ${params[L1_ref_type]} Reference L1 Regions" > "${snakemake_log}"
+echo "L1 Loci Filter on the ${params[L1_ref_type]} Reference L1 Regions"
 
 sorted_output_bam="${snakemake_input[sorted_output_bam]}"
 L1_ref_regions="${snakemake_input[L1_ref_regions]}"
@@ -14,7 +14,7 @@ mkdir -p "${snakemake_output[7]}"
 # Check 1 #
 ###########
 # Checking the read start or end positions (taking into account strandness) and filtering regions with inconsistent read start positions
-echo "Checking the read start or end positions (taking into account strandness) and filtering regions with inconsistent read start positions" >> "${snakemake_log}"
+echo "Checking the read start or end positions (taking into account strandness) and filtering regions with inconsistent read start positions"
 
 # Set the output file paths
 CONSISTENT_REGIONS_FILE="${snakemake_output[0]}"
@@ -25,7 +25,7 @@ CONSISTENT_REGIONS_FILE="${snakemake_output[0]}"
 # Read from the original reference regions file ($OG_REF_REGIONS) instead
 while IFS=$'\t' read -r chrom start end name score strand; do
     TEMP_FILE=$(mktemp)
-    samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> "${snakemake_log}"
+    samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE"
 
     # Check if the temporary file is empty
     if [ ! -s "$TEMP_FILE" ]; then
@@ -55,7 +55,7 @@ while IFS=$'\t' read -r chrom start end name score strand; do
             prev_pos = $i;
             count++;
         }
-    }') >> "${snakemake_log}"
+    }')
 
     if [ -z "$consistent_count" ]; then
         # Output the region to the consistent regions file
@@ -67,13 +67,13 @@ while IFS=$'\t' read -r chrom start end name score strand; do
 
 done < "$L1_ref_regions"
 
-echo "Finished Check #1" >> "${snakemake_log}"
+echo "Finished Check #1"
 
 
 ###########
 # Check 2 #
 ###########
-echo "Checking if the starting position falls within the 1.5kb window between the average consistent starting position and the reference starting position (taking into account strandness)." >> "${snakemake_log}"
+echo "Checking if the starting position falls within the 1.5kb window between the average consistent starting position and the reference starting position (taking into account strandness)."
 
 
 # Set the output file paths
@@ -88,7 +88,7 @@ UNDER1500_FILE="${snakemake_output[1]}"
 # Process positive strand regions
 awk '$6 == "+" {print}' "$L1_ref_regions" | while IFS=$'\t' read -r chrom start end name score strand; do
     TEMP_FILE=$(mktemp)
-    samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> "${snakemake_log}"
+    samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE"
 
     # Check if the temporary file is empty
     if [ ! -s "$TEMP_FILE" ]; then
@@ -118,8 +118,8 @@ awk '$6 == "+" {print}' "$L1_ref_regions" | while IFS=$'\t' read -r chrom start 
 
     # Check if the mode difference is below 1500
     if [ $mode_diff -lt 1500 ]; then
-        echo "Region: ${chrom}_${start}_${end} (Strand: $strand)" >> "${snakemake_log}"
-        echo "Mode Difference: $mode_diff" >> "${snakemake_log}"
+        echo "Region: ${chrom}_${start}_${end} (Strand: $strand)"
+        echo "Mode Difference: $mode_diff"
 
         # Append the region to the under 1500 file
         echo -e "${chrom}\t${start}\t${end}\t${name}\t${score}\t${strand}" >> "$UNDER1500_FILE"
@@ -140,7 +140,7 @@ done
 
 awk '$6 == "-" {print}' "$L1_ref_regions" | while IFS=$'\t' read -r chrom start end name score strand; do
     TEMP_FILE=$(mktemp)
-    samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE" 2> "${snakemake_log}"
+    samtools view -b "$sorted_output_bam" "$chrom:$start-$end" | bedtools bamtobed -i - > "$TEMP_FILE"
 
     # Check if the temporary file is empty
     if [ ! -s "$TEMP_FILE" ]; then
@@ -173,8 +173,8 @@ awk '$6 == "-" {print}' "$L1_ref_regions" | while IFS=$'\t' read -r chrom start 
 
     # Check if the mode difference is below 1500
     if [ $mode_diff -lt 1500 ]; then
-        echo "Region: ${chrom}_${start}_${end} (Strand: $strand)" >> "${snakemake_log}"
-        echo "Mode Difference: $mode_diff" >> "${snakemake_log}"
+        echo "Region: ${chrom}_${start}_${end} (Strand: $strand)"
+        echo "Mode Difference: $mode_diff"
 
         # Append the region to the under 1500 file
         echo -e "${chrom}\t${start}\t${end}\t${name}\t${score}\t${strand}" >> "$UNDER1500_FILE"
@@ -194,23 +194,23 @@ done
 coverage_regions="${snakemake_output[3]}"
 bedtools sort -i $UNDER1500_FILE > $coverage_regions
 
-echo "Finished Check #2" >> "${snakemake_log}"
+echo "Finished Check #2"
 
 
 ###########
 # Check 3 #
 ###########
-echo "Calculate coverage over the remaining L1 regions and filter those with less than 2 reads" >> "${snakemake_log}"
+echo "Calculate coverage over the remaining L1 regions and filter those with less than 2 reads"
 
 
 coverage_output_mean="${snakemake_output[4]}"
-bedtools map -a $coverage_regions -b $bedgraph_sort_output -c 4 -o mean -null 0 > $coverage_output_mean 2> "${snakemake_log}"
-echo "calculated coverage; by MEAN" >> "${snakemake_log}"
+bedtools map -a $coverage_regions -b $bedgraph_sort_output -c 4 -o mean -null 0 > $coverage_output_mean
+echo "calculated coverage; by MEAN"
 
 # Filter regions with a value less than 3 in the last column
 filtered_coverage_output_mean="${snakemake_output[5]}"
 awk '$NF >= 3' $coverage_output_mean > $filtered_coverage_output_mean
-echo "Filtered regions with less than 2 reads. " >> "${snakemake_log}"
+echo "Filtered regions with less than 2 reads. "
 
 
 # Replace regions with less than 2 reads with 0
@@ -222,4 +222,4 @@ else
     cp $L1_ref_regions $FINAL_COV_OUTPUT
 fi
 
-echo "Calculated the ${params[L1_ref_type]} regions coverage values" >> "${snakemake_log}"
+echo "Calculated the ${params[L1_ref_type]} regions coverage values"
