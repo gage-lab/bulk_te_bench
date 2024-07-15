@@ -281,7 +281,7 @@ rule final_map_qc_LRS:
         directory(
             "results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/read_filter_LRS"
         ),
-        "results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/{sample}_{libtype}/bam_summary.txt",
+        "results/LINE-Expression-LRS/{sample}_{libtype}/read_filter/read_filter_LRS/bam_summary.txt",
     conda:
         "line_expression_lrs.yaml"
     params:
