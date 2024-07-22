@@ -84,10 +84,12 @@ rule preprocess_input:
 
 
 rule get_l1hs_hmm:
+    input:
+        download_complete=rules.download_line_expresssion_lrs.output[0],
     output:
-        hmm="resources/LINE-Expression-LRS/L1HS_5end.hmm",
+        hmm="resources/L1HS_5end.hmm",
     log:
-        "resources/LINE-Expression-LRS/L1HS_5end_dfam_query.log",
+        "resources/L1HS_5end_dfam_query.log",
     conda:
         "line_expression_lrs.yaml"
     shell:
@@ -143,18 +145,8 @@ rule L1_detection:
 
         # Post-RepeatMasker Filtering by 10% Divergence
         echo "Filtering RepeatMasker output by 10% divergence at $(date)..."
-        touch {output.ids}
 
-        while read -r line; do
-            if [[ $line == *"L1HS"* ]]; then
-                fields=($line)
-
-                # TODO: do we need this if statement? Yes bc some are above 10
-                if (( $(echo "${{fields[1]}} <= 10" | bc -l) )); then
-                    echo "${{fields[4]}}" >> {output.ids}
-                fi
-            fi
-        done < "{output.rmsk[3]}"
+        awk '$0 ~ /L1HS/ && $2 <= 10 {{print $5}}' {output.rmsk[3]} > {output.ids}
 
         echo "Generating a new FASTA file of reads with less than 10% diverged LINE/L1 elements at $(date)..."
 
@@ -239,9 +231,6 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
 
         echo "Read Filter on the {params.L1_ref_type} Reference L1 Regions"
 
-        mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/{params.L1_ref_type}
-        mkdir -p results/LINE-Expression-LRS/{params.sample}/d_LINE_quantification/{params.L1_ref_type}/read_filter
-
         # Output Files
         L1_regions_reads={output.L1_regions_reads}
         echo "Generating filtered BAM file with reads only located within the L1 reference regions..."
@@ -269,9 +258,6 @@ rule read_filter:  # TODO turn every instance of "active" into a wc
         echo "Sorting the cleaned bedgraph..."
         sortBed -i $bedgraph_output_clean > $bedgraph_sort_output
         """
-
-
-# skipping step 7
 
 
 rule final_map_qc_LRS:
@@ -391,6 +377,57 @@ rule normalization_wgt_avg:
         """
 
 
+rule LRS_reads_report_preprocess:
+    input:
+        original_fq=get_lrs_fq,
+        preprocess_input=rules.preprocess_input.output.fasta1kb,
+        L1_detection=rules.L1_detection.output.fa,
+        map_hg38=rules.map_hg38.output.bam,
+        read_filter=rules.read_filter.output.sorted_read_filter_bam,
+        L1_loci_filter=rules.normalization_wgt_avg.input.input_ref_cov,
+        normalization_wgt_avg=rules.normalization_wgt_avg.output[0],
+    output:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/LRS_reads_report_preprocess.csv",
+    conda:
+        "line_expression_lrs.yaml"
+    log:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/log/LRS_reads_report_preprocess.log",
+    shell:
+        """
+        exec &>> {log}
+        # get read counts for each step's inputs/output
+
+        if [[ {input.original_fq} == *.gz ]]; then
+            original_fq_read_count=$(zgrep -c '^@' {input.original_fq})
+        else
+            original_fq_read_count=$(grep -c '^@' {input.original_fq})
+        fi
+        preprocess_input_read_count=$(grep -c '^>' {input.preprocess_input})
+        L1_detection_read_count=$(grep -c '^>' {input.L1_detection})
+        map_hg38_read_count=$(samtools view -c {input.map_hg38})
+        read_filter_read_count=$(samtools view -c {input.read_filter})
+        L1_loci_filter_read_count=$(wc -l {input.L1_loci_filter} | awk '{{print $1}}')
+        normalization_wgt_avg_read_count=$(wc -l {input.normalization_wgt_avg} | awk '{{print $1}}')
+
+        echo "original_fq,preprocess_input,L1_detection,map_hg38,read_filter,L1_loci_filter,normalization_wgt_avg" > {output[0]}
+        echo "$original_fq_read_count,$preprocess_input_read_count,$L1_detection_read_count,$map_hg38_read_count,$read_filter_read_count,$L1_loci_filter_read_count,$normalization_wgt_avg_read_count" >> {output[0]}
+
+        """
+
+
+rule LRS_reads_report:
+    input:
+        reads=rules.LRS_reads_report_preprocess.output[0],
+    output:
+        "results/LINE-Expression-LRS/{sample}_{libtype}/LRS_reads_report.ipynb",
+    conda:
+        "line_expression_lrs.yaml"
+    log:
+        notebook="results/LINE-Expression-LRS/{sample}_{libtype}/LRS_reads_report.ipynb",
+    notebook:
+        "LRS_reads_report.py.ipynb"
+
+
 def get_lrs_output(wc):
     for txome in config["txomes"]:
         if "ont_samplesheet" in config["txomes"][txome]:
@@ -401,7 +438,7 @@ def get_lrs_output(wc):
                 lambda x: x.lstrip("direct") if "direct" in x else x
             )
             return expand(
-                rules.normalization_wgt_avg.output,
+                rules.LRS_reads_report.output,
                 zip,
                 sample=ss["sample"],
                 libtype=ss.libtype,
